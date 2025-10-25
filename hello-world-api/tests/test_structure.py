@@ -1,4 +1,5 @@
 """Project structure validation tests."""
+
 import pathlib
 
 

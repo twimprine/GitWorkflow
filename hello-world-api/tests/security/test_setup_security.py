@@ -1,7 +1,6 @@
 """Security validation tests for project setup."""
-import os
+
 import pathlib
-from typing import List
 
 
 def test_no_secrets_in_config_files() -> None:
@@ -24,7 +23,9 @@ def test_no_secrets_in_config_files() -> None:
     ]
 
     for pattern in prohibited_patterns:
-        assert pattern not in content, f"Real secret pattern '{pattern}' found in .env.example"
+        assert (
+            pattern not in content
+        ), f"Real secret pattern '{pattern}' found in .env.example"
 
     # Must contain placeholder text
     assert "your-secret-key-here" in content or "change-in-production" in content
@@ -51,7 +52,9 @@ def test_gitignore_excludes_sensitive_files() -> None:
     ]
 
     for pattern in required_patterns:
-        assert pattern in content, f"Required pattern '{pattern}' missing from .gitignore"
+        assert (
+            pattern in content
+        ), f"Required pattern '{pattern}' missing from .gitignore"
 
 
 def test_env_example_has_no_real_secrets() -> None:
@@ -87,7 +90,9 @@ def test_virtual_env_not_committed() -> None:
     venv_patterns = ["venv/", ".venv/", "env/", "ENV/"]
 
     for pattern in venv_patterns:
-        assert pattern in content, f"Virtual env pattern '{pattern}' must be in .gitignore"
+        assert (
+            pattern in content
+        ), f"Virtual env pattern '{pattern}' must be in .gitignore"
 
 
 def test_dependency_versions_pinned() -> None:
@@ -98,7 +103,11 @@ def test_dependency_versions_pinned() -> None:
     assert requirements.exists(), "requirements.txt must exist"
 
     content = requirements.read_text()
-    lines = [line.strip() for line in content.split("\n") if line.strip() and not line.startswith("#")]
+    lines = [
+        line.strip()
+        for line in content.split("\n")
+        if line.strip() and not line.startswith("#")
+    ]
 
     for line in lines:
         # Each dependency must have exact version pinning (==)

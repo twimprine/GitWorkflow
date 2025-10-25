@@ -1,9 +1,9 @@
 """Configuration module tests."""
-import os
+
 from pathlib import Path
 
 import pytest
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 
 
 def test_settings_class_exists() -> None:
@@ -40,7 +40,9 @@ def test_settings_instance_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.DEBUG is True
 
 
-def test_settings_debug_defaults_to_false(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_settings_debug_defaults_to_false(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     """Verify DEBUG defaults to False when not set."""
     from src.config import Settings
 

@@ -1,6 +1,6 @@
 """Dependency validation tests."""
+
 import importlib
-import pathlib
 import subprocess
 import sys
 
@@ -52,7 +52,9 @@ def test_no_dependency_conflicts() -> None:
             text=True,
             timeout=10,
         )
-        assert result.returncode == 0, f"Dependency conflicts found:\n{result.stdout}\n{result.stderr}"
+        assert (
+            result.returncode == 0
+        ), f"Dependency conflicts found:\n{result.stdout}\n{result.stderr}"
     except subprocess.TimeoutExpired:
         assert False, "pip check timed out"
 
@@ -67,5 +69,11 @@ def test_fastapi_version_secure() -> None:
     patch = int(version_parts[2]) if len(version_parts) > 2 else 0
 
     # Must be >= 0.115.12
-    assert major > 0 or (major == 0 and minor > 115) or (major == 0 and minor == 115 and patch >= 12), \
-        f"FastAPI version {fastapi.__version__} is vulnerable. Must be >= 0.115.12 (CVE-2024-24762)"
+    assert (
+        major > 0
+        or (major == 0 and minor > 115)
+        or (major == 0 and minor == 115 and patch >= 12)
+    ), (
+        f"FastAPI version {fastapi.__version__} is vulnerable. "
+        f"Must be >= 0.115.12 (CVE-2024-24762)"
+    )

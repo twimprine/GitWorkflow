@@ -1,6 +1,8 @@
 """Configuration file validation tests."""
+
 import configparser
 import pathlib
+
 import tomli
 
 

@@ -1,4 +1,5 @@
 """Configuration module with Pydantic Settings validation."""
+
 from typing import Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -15,4 +16,13 @@ class Settings(BaseSettings):
     API_KEY: Optional[str] = None
 
 
-settings = Settings()
+def get_settings() -> Settings:
+    """Get settings instance.
+
+    Returns:
+        Settings: Application settings
+    """
+    return Settings()  # type: ignore[call-arg]
+
+
+settings = get_settings()
