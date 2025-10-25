@@ -4,32 +4,99 @@ This guide shows how to add the autonomous PRP orchestration system to any proje
 
 ---
 
+## Prerequisites
+
+Before installing, ensure you have:
+
+### System Requirements
+```bash
+# Debian/Ubuntu
+sudo apt-get install jq curl tree git
+
+# macOS
+brew install jq curl tree git
+
+# Verify installations
+jq --version      # Should be 1.6+
+curl --version    # Any recent version
+python3 --version # Should be 3.8+
+```
+
+### Claude Code CLI
+Install Claude Code from: https://docs.claude.com/en/docs/claude-code
+
+```bash
+# Verify Claude CLI is installed
+which claude
+claude --version
+```
+
+### Python Environment
+- Python 3.8 or higher
+- pip package manager
+- Virtual environment support
+
+---
+
 ## Quick Install
 
 ```bash
+# Define source repository location
+SOURCE_REPO="/path/to/GitWorkflow"  # UPDATE THIS PATH
+
 # 1. Go to your project
 cd /path/to/your/project
 
-# 2. Copy the workflow system
-rsync -av --exclude='venv' --exclude='batch' --exclude='logs' \
-  /home/thomas/Repositories/GitWorkflow/ .
+# 2. Backup existing files (if they exist)
+[[ -f requirements.txt ]] && cp requirements.txt requirements.txt.backup
+[[ -f .gitignore ]] && cp .gitignore .gitignore.backup
 
-# 3. Set up Python environment
+# 3. Copy the workflow system (preserves prp/ structure, excludes data)
+rsync -av \
+  --exclude='venv' \
+  --exclude='batch' \
+  --exclude='logs' \
+  --exclude='prp/queue/*' \
+  --exclude='prp/drafts/*' \
+  --exclude='prp/active/*' \
+  --exclude='prp/completed/*' \
+  --exclude='.env' \
+  "$SOURCE_REPO/" .
+
+# 4. Merge requirements.txt (if your project already has one)
+if [[ -f requirements.txt.backup ]]; then
+  echo "⚠️  Merging requirements.txt with existing file..."
+  cat "$SOURCE_REPO/requirements.txt" >> requirements.txt
+  echo "Review requirements.txt for duplicates"
+else
+  cp "$SOURCE_REPO/requirements.txt" requirements.txt
+fi
+
+# 5. Merge .gitignore (if your project already has one)
+if [[ -f .gitignore.backup ]]; then
+  echo "⚠️  Merging .gitignore with existing file..."
+  cat "$SOURCE_REPO/.gitignore" >> .gitignore
+  echo "Review .gitignore for duplicates"
+fi
+
+# 6. Set up Python environment
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-# 4. Configure your API key
-echo "ANTHROPIC_API_KEY=sk-ant-your-key-here" > .env
+# 7. Configure your API key
+cp .env.example .env
+# Edit .env and add your ANTHROPIC_API_KEY
+echo "⚠️  IMPORTANT: Edit .env and add your ANTHROPIC_API_KEY"
 
-# 5. Create required directories
+# 8. Create required directories
 mkdir -p prp/{queue,drafts,active,completed,queue/processed,queue/failed}
 mkdir -p batch logs
 
-# 6. Initialize state
+# 9. Initialize state
 echo '{"last_batch_time": null, "processed_files": [], "current_processing": null, "batch_count_1h": 0, "batch_times": []}' > logs/prp-orchestrator-state.json
 
-# 7. Test it
+# 10. Test it
 ./generate-prps.sh
 ```
 
@@ -52,14 +119,14 @@ Done! 🎉
 
 ### Configuration
 - `requirements.txt` - Python dependencies
-- `.env.example` - Environment template
-- `.gitignore` - Ignore patterns
+- `.env.example` - Environment template (copy to .env)
+- `.gitignore` - Ignore patterns (merge with existing)
 
 ### Documentation
 - `QUICKSTART.md` - Quick start guide
 - `WORKFLOW-MODES.md` - Workflow modes explanation
 - `INSTALLATION.md` - This file
-- `READY-FOR-E2E-TEST.md` - Test instructions
+- `README.md` - Project overview
 
 ### Directory Structure
 ```
@@ -78,7 +145,8 @@ your-project/
 ├── generate-prps.sh
 ├── execute-prps-from-active.sh
 ├── requirements.txt
-└── .env
+├── .env               # Your configuration (copy from .env.example)
+└── .gitignore
 ```
 
 ---
@@ -90,21 +158,32 @@ If you only want the core workflow without examples:
 ```bash
 cd /path/to/your/project
 
+# Define source
+SOURCE_REPO="/path/to/GitWorkflow"  # UPDATE THIS PATH
+
 # Copy core files only
-cp /home/thomas/Repositories/GitWorkflow/execute-prps.py .
-cp /home/thomas/Repositories/GitWorkflow/requirements.txt .
-cp /home/thomas/Repositories/GitWorkflow/*.sh .
-cp -r /home/thomas/Repositories/GitWorkflow/scripts .
+cp "$SOURCE_REPO/execute-prps.py" .
+cp "$SOURCE_REPO"/*.sh .
+cp -r "$SOURCE_REPO/scripts" .
+
+# Copy configuration templates
+cp "$SOURCE_REPO/requirements.txt" .
+cp "$SOURCE_REPO/.env.example" .
 
 # Create directories
 mkdir -p prp/{queue,drafts,active,completed,queue/processed,queue/failed}
 mkdir -p batch logs
 
-# Setup
+# Setup Python environment
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-echo "ANTHROPIC_API_KEY=sk-ant-..." > .env
+
+# Configure
+cp .env.example .env
+# Edit .env and add your ANTHROPIC_API_KEY
+
+# Initialize state
 echo '{"last_batch_time": null, "processed_files": [], "current_processing": null, "batch_count_1h": 0, "batch_times": []}' > logs/prp-orchestrator-state.json
 ```
 
@@ -226,7 +305,12 @@ jobs:
         with:
           python-version: '3.13'
 
-      - name: Install dependencies
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl tree
+
+      - name: Install Python dependencies
         run: |
           python -m venv venv
           source venv/bin/activate
@@ -252,7 +336,7 @@ jobs:
 
 ## Gitignore Updates
 
-Add to your `.gitignore`:
+**Important**: If your project already has a `.gitignore`, merge these patterns:
 
 ```gitignore
 # PRP Workflow
@@ -262,6 +346,14 @@ logs/
 .env
 prp/queue/failed/
 prp/queue/processed/
+prp/drafts/*
+prp/active/*
+prp/completed/*
+
+# Keep structure files
+!prp/drafts/.gitkeep
+!prp/active/.gitkeep
+!prp/completed/.gitkeep
 ```
 
 ---
@@ -276,7 +368,13 @@ ls -lh *.sh
 
 # Check Python dependencies
 source venv/bin/activate
-python -c "import dotenv; print('✓ OK')"
+python -c "import dotenv; print('✓ python-dotenv OK')"
+
+# Check system dependencies
+jq --version && echo "✓ jq OK"
+curl --version && echo "✓ curl OK"
+tree --version && echo "✓ tree OK"
+which claude && echo "✓ Claude Code CLI OK"
 
 # Check directory structure
 ls -ld prp/{queue,drafts,active,completed}
@@ -322,13 +420,62 @@ chmod +x scripts/*.sh
 
 ### "No API key" errors
 ```bash
-echo "ANTHROPIC_API_KEY=sk-ant-..." > .env
+cp .env.example .env
+# Edit .env and add ANTHROPIC_API_KEY=sk-ant-...
 ```
+
+### "Command not found: jq/curl/tree"
+```bash
+# Debian/Ubuntu
+sudo apt-get install jq curl tree
+
+# macOS
+brew install jq curl tree
+```
+
+### "Command not found: claude"
+Install Claude Code CLI from: https://docs.claude.com/en/docs/claude-code
 
 ### Directory structure issues
 ```bash
 mkdir -p prp/{queue,drafts,active,completed,queue/processed,queue/failed}
 mkdir -p batch logs
+```
+
+### Existing files conflict
+```bash
+# Review backup files
+diff requirements.txt requirements.txt.backup
+diff .gitignore .gitignore.backup
+
+# Manually merge as needed
+```
+
+---
+
+## Rollback Instructions
+
+If installation causes issues:
+
+```bash
+# 1. Restore backed up files
+[[ -f requirements.txt.backup ]] && mv requirements.txt.backup requirements.txt
+[[ -f .gitignore.backup ]] && mv .gitignore.backup .gitignore
+
+# 2. Remove workflow files
+rm -f execute-prps.py *.sh
+rm -rf scripts/collect-prp-context.sh scripts/create-batch-request.sh scripts/submit-batch.sh
+rm -f .env.example
+
+# 3. Remove directories (if empty)
+rmdir prp/{queue/processed,queue/failed,queue,drafts,active,completed} 2>/dev/null
+rmdir batch logs 2>/dev/null
+
+# 4. Remove Python environment
+rm -rf venv/
+
+# 5. Check git status
+git status
 ```
 
 ---
@@ -338,27 +485,58 @@ mkdir -p batch logs
 Sync updates from the GitWorkflow repo:
 
 ```bash
-# Pull latest changes
-cd /home/thomas/Repositories/GitWorkflow
+# Define source
+SOURCE_REPO="/path/to/GitWorkflow"  # UPDATE THIS PATH
+
+# Pull latest changes from source
+cd "$SOURCE_REPO"
 git pull
 
 # Sync to your project (preserves your .env and data)
 cd /path/to/your/project
-rsync -av --exclude='venv' --exclude='batch' --exclude='logs' \
-  --exclude='.env' --exclude='prp/queue' --exclude='prp/completed' \
-  /home/thomas/Repositories/GitWorkflow/ .
+rsync -av \
+  --exclude='venv' \
+  --exclude='batch' \
+  --exclude='logs' \
+  --exclude='.env' \
+  --exclude='prp/queue/*' \
+  --exclude='prp/drafts/*' \
+  --exclude='prp/active/*' \
+  --exclude='prp/completed/*' \
+  "$SOURCE_REPO/" .
+
+# Reinstall dependencies if requirements.txt changed
+source venv/bin/activate
+pip install -r requirements.txt --upgrade
 ```
 
 ---
 
 ## Summary
 
-**Minimal install**: 5 commands, 2 minutes
-**Full install**: Copy everything, 5 minutes
+**Minimal install**: 10 commands, 5 minutes
+**Full install**: Copy everything, 10 minutes
 **Testing**: 1 test definition, 8 minutes
 **Ready for production**: Yes!
 
 **Need help?** See documentation:
-- `QUICKSTART.md` - Usage
-- `WORKFLOW-MODES.md` - Different modes
-- `E2E-TEST-RESULTS.md` - Expected behavior
+- `QUICKSTART.md` - Usage guide
+- `WORKFLOW-MODES.md` - Different workflow modes
+- `README.md` - System overview
+- `PRP_Process.md` - PRP workflow documentation
+
+---
+
+## Safety Checklist for Production Projects
+
+Before installing in OrgCash, AWS_Environments, or other production projects:
+
+- [ ] Backed up existing `requirements.txt`
+- [ ] Backed up existing `.gitignore`
+- [ ] Verified Python 3.8+ available
+- [ ] Installed system dependencies (jq, curl, tree)
+- [ ] Installed Claude Code CLI
+- [ ] Reviewed `.env.example` and configured `.env`
+- [ ] Tested in development environment first
+- [ ] Have rollback plan ready
+- [ ] Know where to check logs (`logs/prp-orchestrator-dev.log`)
