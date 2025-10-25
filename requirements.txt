@@ -1,0 +1,8 @@
+# PRP Orchestrator Dependencies
+
+# Core dependencies
+python-dotenv>=1.0.0  # Load .env configuration files
+requests>=2.31.0       # HTTP requests for API calls (if needed)
+
+# Optional but recommended
+jq>=1.6.0              # JSON processing (system package, not Python)

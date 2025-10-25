@@ -1,0 +1,37 @@
+# Environment configuration
+.env
+
+# Batch processing artifacts
+batch/
+logs/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+
+# PRP queue (optional - may want to track definitions)
+# prp/queue/*
+# !prp/queue/.gitkeep
+
+# Sensitive data
+*.key
+*.pem
+*.json.secret
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
