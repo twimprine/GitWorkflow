@@ -54,6 +54,8 @@ cd /path/to/your/project
 # 3. Copy the workflow system (preserves prp/ structure, excludes data)
 rsync -av \
   --exclude='venv' \
+  --exclude='.git' \
+  --exclude='.claude' \
   --exclude='batch' \
   --exclude='logs' \
   --exclude='prp/queue/*' \
@@ -85,7 +87,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # 7. Configure your API key
-cp .env.example .env
+cp .env.example .env.new
 # Edit .env and add your ANTHROPIC_API_KEY
 echo "⚠️  IMPORTANT: Edit .env and add your ANTHROPIC_API_KEY"
 
