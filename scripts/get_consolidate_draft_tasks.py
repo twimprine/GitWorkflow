@@ -15,7 +15,7 @@ AGENT_DIRS = [
     Path("tmp/agents"),  # optional repo fallback if you add any later
 ]
 
-MODEL_ID = "claude-sonnet-4-5"
+MODEL_ID = "claude-opus"
 
 # Match: $steps.<stepId>.outputs.<key>
 VAR_REF_RE = re.compile(r"^\$steps\.(?P<sid>[A-Za-z0-9_\-]+)\.outputs\.(?P<key>[A-Za-z0-9_\-]+)$")

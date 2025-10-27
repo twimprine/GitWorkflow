@@ -132,7 +132,7 @@ def _panel_user_instruction(feature: str) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--md", default="tmp/draft.md", help="Markdown with prp-steps (for consistency; not required to contain panel step)")
-    ap.add_argument("--arg", dest="feature_description", required=True, help="Feature description")
+    ap.add_argument("--arg", dest="feature_description", default="/prp/idea.md",required=True, help="Feature description")
     ap.add_argument("--agents", default=",".join(CORE_PANEL), help="Comma-separated agent ids; defaults to core panel")
     ap.add_argument("--model", default=MODEL_ID)
     args = ap.parse_args()

@@ -177,7 +177,7 @@ def main():
             "params": {
                 "model": args.model,
                 "max_tokens": 2560,
-                "temperature": 0.2,
+                "temperature": 0.9,
                 "system": [
                     {"type": "text", "text": f"You are an expert planner. Focus on the '{grp}' context."},
                     {"type": "text", "text": content, "cache_control": {"type": "ephemeral", "ttl": "1h"}}

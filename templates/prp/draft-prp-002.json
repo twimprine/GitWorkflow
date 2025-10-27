@@ -1,0 +1,59 @@
+{
+    "title": "short-title",
+    "description": "detailed description of the requested change",
+    "atomicity": {
+        "is_atomic": true|false,
+        "reasons": [
+            "..."
+        ]
+    },
+    "proposed_tasks": [
+        {
+            "id": "###",
+            "objective": "one-sentence",
+            "affected_components": [
+                "x"
+            ], // ≤2
+            "dependencies": [],
+            "acceptance": [
+                "..."
+            ], // 3–5 checks
+            "risk": [
+                "..."
+            ], // brief
+            "effort": "S|M|L"
+        }
+    ],
+    "split_recommendation": [
+        {"PRP-001-t-001": "..."},
+        {"PRP-001-t-002": "..."},    
+        {"PRP-002-t-001": "..."},
+        {"PRP-002-t-002": "..."}
+        
+    ],
+    "execution_order": [
+        {"PRP-Number": "001",
+         "tasks": [
+            {"PRP-001-t-001": {
+                "dependencies": ["PRP-###-t-###","PRP-###-t-###"]}},
+            {"PRP-001-t-002": {
+                "dependencies": ["PRP-###-t-###","PRP-###-t-###"]}
+            }]},
+        {"PRP-Number": "002",
+         "tasks": [
+            {"PRP-002-t-001": {
+                "dependencies": ["PRP-###-t-###"]}},
+            {"PRP-002-t-002": {
+                "dependencies": ["PRP-###-t-###"]}
+            }]}
+    ],
+    "delegation_suggestions": [
+        {
+            "<agent>": "..."
+        },
+        {
+            "<agent>": "..."
+        }
+    ],
+    "Questions": [{"..."}]
+}

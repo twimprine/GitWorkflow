@@ -139,7 +139,7 @@ def _build_request_for_agent(agent: str, template_path: str, feature_desc: str, 
         "params": {
             "model": model,
             "max_tokens": int(max_tokens),
-            "temperature": 0.2,
+            "temperature": 0.9,
             "system": [
                 {
                     "type": "text",
@@ -228,6 +228,19 @@ def _save_json_result(item, slug: str, batch_ts: str) -> str | None:
         raw_out = f"tmp/raw/{slug}-{cid}-{batch_ts}.txt"
         _ensure_parent_dir(raw_out)
         Path(raw_out).write_text(combined or "", encoding="utf-8")
+        return None
+
+    # Validate wrapper keys: require outputs.draft_file (str) and content (dict)
+    def _valid(obj: dict) -> bool:
+        outs = obj.get("outputs")
+        content = obj.get("content")
+        return isinstance(outs, dict) and isinstance(outs.get("draft_file"), str) and isinstance(content, dict)
+
+    if not _valid(payload):
+        diag = f"tmp/raw/{slug}-{cid}-{batch_ts}-invalid.json"
+        _ensure_parent_dir(diag)
+        Path(diag).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        print(f"WARN: invalid payload for {cid}: missing outputs.draft_file and/or content. Saved diagnostics -> {diag}")
         return None
 
     # Derive dest from outputs.draft_file if present

@@ -9,6 +9,7 @@
     "proposed_tasks": [
         {
             "id": "###",
+            "agent": "<agent_name>",
             "objective": "one-sentence",
             "affected_components": [
                 "x"
@@ -36,5 +37,5 @@
             "<agent>": "..."
         }
     ],
-    "Questions": [{"..."}]
+    "Questions": [{"agent": "<agent_name>", "question": "..."}]
 }
