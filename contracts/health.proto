@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package contracts.sample;
+
+service Health {
+  rpc Ping (PingRequest) returns (PingResponse) {}
+}
+
+message PingRequest {}
+
+message PingResponse {
+  string status = 1; // ok
+}
