@@ -1,0 +1,258 @@
+{
+  "content": [
+    {
+      "task": "P-206-T-003-001",
+      "atomicity": {
+        "is_atomic": true,
+        "depends_on": []
+      },
+      "delegated_to": "python-developer",
+      "objective": "Implement minimal HTTP server with /healthz and /echo endpoints using Python stdlib with graceful shutdown, basic logging, and comprehensive error handling",
+      "affected_components": [
+        "srv/echo.py"
+      ],
+      "success_criteria": [
+        "GET /healthz returns 200 OK with no body",
+        "POST /echo with valid JSON and Content-Type application/json returns identical JSON with 200 status",
+        "POST /echo rejects bodies >16KB with 413 Payload Too Large before full read",
+        "POST /echo rejects requests without Content-Type application/json with 400 Bad Request",
+        "Server reads PORT from environment variable with default 8080 and handles SIGTERM/SIGINT gracefully"
+      ],
+      "validation_tests": [
+        {
+          "id": "VT-001",
+          "description": "Health endpoint returns 200 OK",
+          "expected_result": "curl localhost:8080/healthz returns HTTP 200 with empty body"
+        },
+        {
+          "id": "VT-002",
+          "description": "Echo endpoint returns identical JSON payload",
+          "expected_result": "POST with {\"a\":1} returns {\"a\":1} with 200 status"
+        },
+        {
+          "id": "VT-003",
+          "description": "Body size limit enforced at 16KB",
+          "expected_result": "POST with 20KB payload returns 413 status without memory exhaustion"
+        },
+        {
+          "id": "VT-004",
+          "description": "Content-Type validation enforced",
+          "expected_result": "POST without Content-Type application/json returns 400 status"
+        },
+        {
+          "id": "VT-005",
+          "description": "Concurrent requests handled safely",
+          "expected_result": "10 parallel POST requests return correct independent responses without state corruption"
+        }
+      ],
+      "supporting_user_stories": [
+        {
+          "id": "US-001",
+          "description": "As a DevOps engineer, I need a minimal healthcheck endpoint so that load balancers can verify service availability"
+        },
+        {
+          "id": "US-002",
+          "description": "As a developer, I need a simple echo service to test JSON payloads without persistence so that I can validate request/response cycles"
+        },
+        {
+          "id": "US-003",
+          "description": "As a security engineer, I need body size limits enforced before parsing so that the service is protected from memory exhaustion attacks"
+        },
+        {
+          "id": "US-004",
+          "description": "As a platform operator, I need graceful shutdown handling so that rolling deployments complete in-flight requests without connection errors"
+        }
+      ],
+      "effort": {
+        "estimated_hours": 4,
+        "complexity": "low"
+      },
+      "notes": "Implementation uses Python http.server stdlib module. Graceful shutdown via signal.signal() for SIGTERM/SIGINT. Basic logging to stdout for request/error visibility. Body size validation occurs before JSON parsing to prevent DoS. No external dependencies, no global state, no file I/O per requirements. Content-Type validation returns 400 for missing header, 415 for incorrect media type. Malformed JSON returns 400 with generic error message (no implementation details exposed). Server remains HTTP-only; HTTPS termination handled at infrastructure layer if needed.",
+      "questions": []
+    },
+    {
+      "task": "P-206-T-003-002",
+      "atomicity": {
+        "is_atomic": true,
+        "depends_on": [
+          "P-206-T-003-001"
+        ]
+      },
+      "delegated_to": "test-runner",
+      "objective": "Create comprehensive test suite validating healthcheck, echo, size limit, Content-Type enforcement, concurrent requests, malformed JSON, and graceful shutdown behaviors",
+      "affected_components": [
+        "tests/test_echo_server.sh"
+      ],
+      "success_criteria": [
+        "Health test verifies 200 response from /healthz endpoint",
+        "Echo test verifies JSON round-trip with exact payload match",
+        "Size limit test verifies 413 response for >16KB payload",
+        "Content-Type test verifies 400 response for missing/incorrect header",
+        "Concurrent test verifies 10 parallel requests complete successfully without state corruption"
+      ],
+      "validation_tests": [
+        {
+          "id": "VT-006",
+          "description": "Test suite executes all test cases successfully",
+          "expected_result": "All 8 test cases pass: health, echo, size_limit, content_type_missing, content_type_invalid, malformed_json, concurrent, graceful_shutdown"
+        },
+        {
+          "id": "VT-007",
+          "description": "Test cleanup handles background processes",
+          "expected_result": "Server process terminated cleanly after test completion without orphaned processes"
+        },
+        {
+          "id": "VT-008",
+          "description": "Tests handle port conflicts gracefully",
+          "expected_result": "Tests use unique port (8090) and verify availability before starting server"
+        }
+      ],
+      "supporting_user_stories": [
+        {
+          "id": "US-005",
+          "description": "As a QA engineer, I need automated tests covering all acceptance criteria so that regressions are detected immediately"
+        },
+        {
+          "id": "US-006",
+          "description": "As a developer, I need tests for edge cases like malformed JSON and concurrent requests so that production issues are prevented"
+        },
+        {
+          "id": "US-007",
+          "description": "As a CI/CD pipeline, I need deterministic test execution with proper cleanup so that builds are reliable and repeatable"
+        }
+      ],
+      "effort": {
+        "estimated_hours": 3,
+        "complexity": "low"
+      },
+      "notes": "Test suite uses shell scripts with curl for simplicity and stdlib-only constraint. Tests include: (1) health endpoint 200 OK, (2) echo JSON round-trip, (3) 16KB size limit enforcement, (4) missing Content-Type returns 400, (5) incorrect Content-Type returns 415, (6) malformed JSON returns 400, (7) concurrent requests (10 parallel curl commands), (8) graceful shutdown (SIGTERM handling). Server started on port 8090 to avoid conflicts. Background process management with PID tracking for cleanup. Tests validate no global state corruption and proper error handling.",
+      "questions": []
+    },
+    {
+      "task": "P-206-T-003-003",
+      "atomicity": {
+        "is_atomic": true,
+        "depends_on": [
+          "P-206-T-003-001"
+        ]
+      },
+      "delegated_to": "security-reviewer",
+      "objective": "Validate security controls for body size limits, Content-Type enforcement, JSON parsing safety, and absence of information leakage in error responses",
+      "affected_components": [
+        "srv/echo.py"
+      ],
+      "success_criteria": [
+        "Body size check occurs before JSON parsing to prevent memory exhaustion",
+        "Content-Type validation rejects non-JSON requests with appropriate status codes",
+        "Error responses do not leak implementation details or stack traces",
+        "No global state or file I/O present in implementation",
+        "Malformed JSON handled gracefully with generic 400 error message"
+      ],
+      "validation_tests": [
+        {
+          "id": "VT-009",
+          "description": "Body size validation prevents DoS",
+          "expected_result": "20KB payload rejected with 413 before full read, memory usage remains constant"
+        },
+        {
+          "id": "VT-010",
+          "description": "Content-Type enforcement prevents non-JSON payloads",
+          "expected_result": "Requests with text/plain or missing Content-Type rejected with 400/415"
+        },
+        {
+          "id": "VT-011",
+          "description": "Error messages do not expose internals",
+          "expected_result": "Malformed JSON returns generic 'Invalid JSON payload' without parser details"
+        },
+        {
+          "id": "VT-012",
+          "description": "No global state or file operations",
+          "expected_result": "Code review confirms no global variables, no file I/O, no external dependencies"
+        }
+      ],
+      "supporting_user_stories": [
+        {
+          "id": "US-008",
+          "description": "As a security engineer, I need body size limits enforced early so that attackers cannot exhaust server memory"
+        },
+        {
+          "id": "US-009",
+          "description": "As a security engineer, I need error messages that do not leak implementation details so that attackers gain no reconnaissance information"
+        },
+        {
+          "id": "US-010",
+          "description": "As a compliance officer, I need validation that no sensitive data is persisted so that data retention policies are met"
+        }
+      ],
+      "effort": {
+        "estimated_hours": 2,
+        "complexity": "low"
+      },
+      "notes": "Security review validates: (1) Content-Length header checked before reading request body, (2) Body size limit enforced at 16KB (16384 bytes), (3) JSON parsing wrapped in try-except with generic error response, (4) No global variables or class-level state, (5) No file operations (open, write, read), (6) No external library imports beyond stdlib, (7) Error responses return only HTTP status codes and generic messages. Content-Type validation returns 400 for missing header, 415 for non-application/json. Rate limiting not required per minimal scope; infrastructure layer handles if needed.",
+      "questions": []
+    },
+    {
+      "task": "P-206-T-003-004",
+      "atomicity": {
+        "is_atomic": true,
+        "depends_on": [
+          "P-206-T-003-001",
+          "P-206-T-003-002",
+          "P-206-T-003-003"
+        ]
+      },
+      "delegated_to": "devops-engineer",
+      "objective": "Create deployment documentation covering PORT configuration, process management, logging configuration, and rollback procedures for container and systemd environments",
+      "affected_components": [
+        "docs/deployment/echo-server.md"
+      ],
+      "success_criteria": [
+        "Documentation covers PORT environment variable configuration with default 8080",
+        "Process management instructions provided for Docker, systemd, and direct execution",
+        "Logging configuration documented for stdout/stderr with optional LOG_LEVEL control",
+        "Rollback procedure documented using stop_process with graceful shutdown",
+        "Health check integration examples provided for load balancers and orchestrators"
+      ],
+      "validation_tests": [
+        {
+          "id": "VT-013",
+          "description": "Deployment documentation is complete and accurate",
+          "expected_result": "Documentation includes all required sections: configuration, deployment, monitoring, rollback"
+        },
+        {
+          "id": "VT-014",
+          "description": "Example configurations are valid and tested",
+          "expected_result": "Docker, systemd, and direct execution examples successfully deploy server"
+        },
+        {
+          "id": "VT-015",
+          "description": "Rollback procedure is documented and tested",
+          "expected_result": "SIGTERM signal triggers graceful shutdown within 10 seconds"
+        }
+      ],
+      "supporting_user_stories": [
+        {
+          "id": "US-011",
+          "description": "As a DevOps engineer, I need deployment documentation so that I can deploy the service consistently across environments"
+        },
+        {
+          "id": "US-012",
+          "description": "As a platform operator, I need rollback procedures documented so that failed deployments can be reverted quickly"
+        },
+        {
+          "id": "US-013",
+          "description": "As a monitoring engineer, I need health check integration examples so that service availability is tracked correctly"
+        }
+      ],
+      "effort": {
+        "estimated_hours": 2,
+        "complexity": "low"
+      },
+      "notes": "Documentation covers: (1) Environment variables: PORT (default 8080), LOG_LEVEL (optional: silent|info|error), (2) Deployment methods: Docker (example Dockerfile), systemd (example service unit), direct execution (python srv/echo.py), (3) Logging: stdout for requests, stderr for errors, structured format optional, (4) Graceful shutdown: SIGTERM/SIGINT handling with 10-second timeout, (5) Health checks: GET /healthz for load balancers, (6) Rollback: stop process, wait for graceful shutdown, verify no orphaned connections. No HTTPS configuration (handled at infrastructure layer). No rate limiting (handled at infrastructure layer if needed).",
+      "questions": []
+    }
+  ],
+  "outputs": {
+    "draft_file": "prp/drafts/P-206-T-003-p-206-t-003-echo-http-consolidated.json"
+  }
+}
