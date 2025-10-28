@@ -1,0 +1,116 @@
+```json
+{
+  "questions": [
+    {
+      "question": "Are there additional security headers (CORS, CSP, X-Content-Type-Options, X-Frame-Options) required for HTTP responses?",
+      "agents": ["security-reviewer"],
+      "source_files": ["P-179-T-001.json", "P-177-T-001.json", "P-176-T-001.json", "P-150-T-001.json", "P-175-T-001.json"]
+    },
+    {
+      "question": "Are there additional security requirements beyond body size limit and Content-Type validation (e.g., rate limiting, request timeout)?",
+      "agents": ["security-reviewer"],
+      "source_files": ["P-148-T-001.json"]
+    },
+    {
+      "question": "Should rate limiting or connection throttling be implemented to prevent DoS attacks?",
+      "agents": ["security-reviewer"],
+      "source_files": ["P-182-T-001.json", "P-147-T-001.json", "P-153-T-001.json", "P-146-T-001.json", "P-174-T-001.json", "P-151-T-001.json", "P-181-T-001.json", "P-178-T-001.json"]
+    },
+    {
+      "question": "Are there specific HTTP response headers required (e.g., Content-Type, Server identification)?",
+      "agents": ["python-developer"],
+      "source_files": ["P-153-T-001.json"]
+    },
+    {
+      "question": "Are there specific JSON schema validation requirements beyond basic parsing?",
+      "agents": ["security-reviewer"],
+      "source_files": ["P-149-T-001.json"]
+    },
+    {
+      "question": "Are there specific logging requirements for requests, errors, and health checks?",
+      "agents": ["devops-engineer"],
+      "source_files": ["P-154-T-001.json", "P-147-T-001.json"]
+    },
+    {
+      "question": "Are there specific logging requirements for requests/errors or should it be silent?",
+      "agents": ["nodejs-developer"],
+      "source_files": ["P-152-T-001.json"]
+    },
+    {
+      "question": "Is graceful shutdown handling required for the server process?",
+      "agents": ["application-architect"],
+      "source_files": ["P-149-T-001.json"]
+    },
+    {
+      "question": "Is this server intended for production use or development/testing only?",
+      "agents": ["architect-reviewer", "application-architect"],
+      "source_files": ["P-179-T-001.json", "P-148-T-001.json"]
+    },
+    {
+      "question": "Should /echo validate JSON structure beyond parsing, or accept any valid JSON?",
+      "agents": ["nodejs-developer", "python-developer"],
+      "source_files": ["P-152-T-001.json", "P-180-T-001.json", "P-174-T-001.json", "P-182-T-001.json"]
+    },
+    {
+      "question": "Should both Python and Node.js implementations be delivered, or is one preferred?",
+      "agents": ["application-architect", "project-manager", "python-developer"],
+      "source_files": ["P-177-T-001.json", "P-148-T-001.json", "P-149-T-001.json", "P-176-T-001.json", "P-179-T-001.json", "P-181-T-001.json"]
+    },
+    {
+      "question": "Should integration tests include concurrent request handling and graceful shutdown/load testing scenarios?",
+      "agents": ["test-automation", "test-runner"],
+      "source_files": ["P-151-T-001.json", "P-179-T-001.json", "P-148-T-001.json", "P-149-T-001.json", "P-153-T-001.json", "P-177-T-001.json", "P-176-T-001.json", "P-147-T-001.json", "P-154-T-001.json", "P-150-T-001.json", "P-178-T-001.json", "P-174-T-001.json", "P-180-T-001.json"]
+    },
+    {
+      "question": "Should invalid JSON payloads return 400 Bad Request with error details or generic error message?",
+      "agents": ["python-developer"],
+      "source_files": ["P-151-T-001.json"]
+    },
+    {
+      "question": "Should the server handle graceful shutdown on SIGTERM/SIGINT signals?",
+      "agents": ["nodejs-developer", "python-developer", "application-architect"],
+      "source_files": ["P-180-T-001.json", "P-152-T-001.json", "P-182-T-001.json", "P-174-T-001.json", "P-154-T-001.json", "P-176-T-001.json", "P-146-T-001.json", "P-151-T-001.json", "P-153-T-001.json", "P-150-T-001.json", "P-147-T-001.json"]
+    },
+    {
+      "question": "Should the server log requests/errors to stdout/stderr, or remain completely silent?",
+      "agents": ["python-developer", "nodejs-developer", "devops-engineer"],
+      "source_files": ["P-178-T-001.json", "P-180-T-001.json", "P-175-T-001.json", "P-182-T-001.json"]
+    },
+    {
+      "question": "Should we add tests for malformed JSON, missing Content-Type header, and concurrent request handling?",
+      "agents": ["test-runner"],
+      "source_files": ["P-146-T-001.json", "P-175-T-001.json", "P-181-T-001.json"]
+    },
+    {
+      "question": "Should we enforce HTTPS-only in production or is HTTP acceptable for this healthcheck service?",
+      "agents": ["security-reviewer"],
+      "source_files": ["P-152-T-001.json"]
+    },
+    {
+      "question": "Should we implement request timeout limits to prevent slowloris attacks?",
+      "agents": ["security-reviewer"],
+      "source_files": ["P-154-T-001.json", "P-180-T-001.json"]
+    },
+    {
+      "question": "What is the expected deployment environment and process management strategy (systemd, Docker, supervisor, PM2)?",
+      "agents": ["devops-engineer"],
+      "source_files": ["P-148-T-001.json", "P-149-T-001.json", "P-178-T-001.json", "P-153-T-001.json", "P-174-T-001.json", "P-181-T-001.json", "P-152-T-001.json", "P-176-T-001.json", "P-150-T-001.json", "P-177-T-001.json", "P-179-T-001.json"]
+    },
+    {
+      "question": "What is the expected graceful shutdown behavior when receiving SIGTERM/SIGINT?",
+      "agents": ["devops-engineer"],
+      "source_files": ["P-175-T-001.json"]
+    },
+    {
+      "question": "What logging level and format is required for production deployment (stdout/stderr, structured JSON logs)?",
+      "agents": ["devops-engineer"],
+      "source_files": ["P-151-T-001.json", "P-146-T-001.json"]
+    },
+    {
+      "question": "What should be the response format for /echo when Content-Type is missing or incorrect?",
+      "agents": ["python-developer"],
+      "source_files": ["P-154-T-001.json"]
+    }
+  ]
+}
+```

@@ -1,0 +1,67 @@
+# @templates/prp/consolidation-spec.yaml
+version: 1.0
+description: >
+  Consolidate and organize all draft PRP task files into a single validated
+  task list, ensuring completeness, determinism, and compliance with existing
+  standards and requirements.
+
+input:
+  - pattern: "@templates/prp/draft-prp-*.json"
+  - description: "Each file may contain tasks, dependencies, documentation requirements, standards, tests, validations, and question references."
+
+output:
+  file: "@templates/prp/draft-prp-003.json"
+  description: "Consolidated and validated task list with dependencies and documentation references."
+
+objectives:
+  - Merge and normalize all tasks into a single structure.
+  - Resolve and document dependencies.
+  - Validate against existing repo standards and user stories.
+  - Mark incomplete or ambiguous questions as `needs-input`.
+  - Ensure tasks are atomic, testable, reversible, and documented.
+
+rules:
+  organization:
+    - Merge tasks under logical categories or functional areas.
+    - Maintain explicit dependency ordering.
+    - Cross-link related tasks when applicable.
+  validation:
+    - Cross-check all tasks against:
+      - Existing standards and policies in the repo
+      - Existing user stories and requirements
+    - Ensure all questions are answered or flagged `needs-input`.
+  quality:
+    - Each task must:
+      - Be atomic: performs one clear action
+      - Be deterministic: produces consistent results
+      - Be reversible: has defined rollback or cleanup steps
+      - Be documented: includes references and context
+      - Be testable: defines measurable validation criteria
+  design_principles:
+    - Never regress existing standards.
+    - Security is a mandatory design feature.
+    - Simplicity is prioritized—minimal solution that fully satisfies the goal.
+    - Determinism and clarity take precedence over style.
+    - Tasks must be unambiguous and verifiable.
+
+documentation_requirements:
+  - Link each task to relevant standards and references.
+  - Provide clear validation and test coverage mappings.
+  - Include documentation for both success and rollback paths.
+
+validation_requirements:
+  - Ensure consistency with:
+      - Repository standards
+      - User stories
+      - Requirement documents
+  - Validate that all required inputs are defined and accessible.
+
+tests:
+  - Verify all tasks execute deterministically.
+  - Confirm rollback and cleanup procedures function correctly.
+  - Validate compliance with repo standards and policies.
+
+metadata:
+  version_control: true
+  reproducibility: required
+  audit_trail: required

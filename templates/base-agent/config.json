@@ -1,0 +1,137 @@
+{
+  "name": "agent-name",
+  "version": "1.0.0",
+  "description": "Brief description of what this agent does",
+  "author": "Your Name",
+  "license": "MIT",
+  "capabilities": [
+    "capability-1",
+    "capability-2"
+  ],
+  "requirements": {
+    "python": ">=3.8",
+    "dependencies": []
+  },
+  "interfaces": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "The action to perform"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Action-specific parameters"
+        }
+      },
+      "required": ["action"]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["success", "failure", "partial"]
+        },
+        "data": {
+          "type": "object"
+        },
+        "errors": {
+          "type": "array"
+        }
+      },
+      "required": ["status"]
+    }
+  },
+  "performance": {
+    "timeout": 30,
+    "max_memory": "512MB",
+    "max_concurrent": 10
+  },
+  "testing": {
+    "coverage_threshold": 100,
+    "required_test_types": [
+      "unit",
+      "integration",
+      "e2e",
+      "security",
+      "chaos",
+      "performance",
+      "accessibility"
+    ],
+    "coverage_mandates": {
+      "lines": 100,
+      "branches": 100,
+      "functions": 100,
+      "statements": 100
+    },
+    "performance_benchmarks": {
+      "response_time_p95": 1000,
+      "response_time_p99": 2000,
+      "throughput_rps": 100
+    },
+    "security_requirements": {
+      "threat_modeling": true,
+      "vulnerability_scanning": true,
+      "penetration_testing": true
+    },
+    "validation_checkpoints": {
+      "standards_compliance": true,
+      "security_verification": true,
+      "test_coverage_verified": true,
+      "nist_compliance": true
+    }
+  },
+  "monitoring": {
+    "health_check_endpoint": "/health",
+    "metrics_endpoint": "/metrics",
+    "log_level": "INFO"
+  },
+  "security": {
+    "nist_compliance": {
+      "cybersecurity_framework": true,
+      "security_controls_800_53": "moderate",
+      "software_development_framework_800_218": true,
+      "pii_protection_800_122": true,
+      "privacy_framework": true
+    },
+    "encryption": {
+      "at_rest": true,
+      "in_transit": true,
+      "key_management": "secure"
+    },
+    "privacy_by_design": {
+      "minimal_data_collection": true,
+      "user_consent_required": true,
+      "right_to_deletion": true,
+      "data_anonymization": true,
+      "complete_audit_trails": true
+    },
+    "emergency_stop_conditions": [
+      "encryption_weakening",
+      "privacy_violations",
+      "safety_feature_removal",
+      "backdoor_implementation",
+      "data_exposure_risks"
+    ]
+  },
+  "quality_gates": {
+    "redesign_loop": {
+      "max_iterations": 3,
+      "feedback_documentation": true,
+      "root_cause_analysis": true
+    },
+    "validation_checkpoints": {
+      "standards_met": true,
+      "security_satisfied": true,
+      "coverage_verified": true,
+      "no_blocking_issues": true
+    }
+  },
+  "prompts": {
+    "system": "prompts/system.md",
+    "max_tokens": 4096,
+    "temperature": 0.5
+  }
+}

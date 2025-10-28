@@ -1,0 +1,228 @@
+version: 1.1
+description: >
+  Transform consolidated task JSON into a single PRP (machine + human) that adds
+  contracts, interfaces, schemas, security, and deployment/operability details.
+  Output MUST be deterministic and conform to PRP-004 template/schema.
+
+inputs:
+  # Path or in-memory JSON; runner supplies one of these.
+  consolidated_tasks_json_path: $ARGUMENTS
+  consolidated_tasks_json: null
+
+templates:
+  # JSON Schema for the final PRP JSON (machine output).
+  prp_schema_path: "templates/prp/draft-prp-004.json"
+  # Optional Markdown scaffold for human-readable PRP.
+  prp_markdown_template: "templates/prp/draft-prp-004.md"
+
+output_targets:
+  prp_json_path: "prp/active/PRP-004.json"
+  prp_markdown_path: "prp/active/PRP-004.md"
+
+determinism:
+  # Stable sorting rules applied everywhere.
+  sort_keys:
+    - path: "$.tasks[*]"              # PRP task entries
+      by: ["task", "delegated_to"]
+    - path: "$.contracts[*]"
+      by: ["id"]
+    - path: "$.interfaces.http[*]"
+      by: ["method", "path"]
+    - path: "$.schemas.json[*]"
+      by: ["$id"]
+    - path: "$.security.findings[*]"
+      by: ["id"]
+    - path: "$.traceability.links[*]"
+      by: ["source_id","target_id"]
+  stable_ids:
+    # PRP section IDs derive from source task id + normalized slug.
+    rule: "<TASK_ID>::<SECTION>::<SLUG>"
+    section_enum: ["contract","interface","schema","network","security","test","doc","deploy","monitor","compliance"]
+
+defaults:
+  openapi_version: "3.1.0"
+  json_schema_dialect: "https://json-schema.org/draft/2020-12/schema"
+  k8s_api_versions:
+    cnp: "cilium.io/v2"
+  container:
+    base: "python:3.12-slim"
+    user: "10001:10001"
+    workdir: "/app"
+  timeouts:
+    graceful_shutdown_seconds: 10
+
+objectives:
+  - Parse consolidated JSON.
+  - For EACH input task, produce:
+    - contracts: preconditions, postconditions, invariants, rollback.
+    - interfaces:
+        http:
+          - endpoints (method, path, status, headers, examples, webhooks).
+          - environment variables, ports, CLI args, stdio behavior.
+    - schemas:
+        - OpenAPI paths/components for HTTP.
+        - JSON Schemas for payloads and config.
+    - data_flows: explicit producer/consumer mappings between tasks/components.
+    - network_policies:
+        - CiliumNetworkPolicy allow-list (egress/ingress, ports, protocols).
+    - security:
+        - abuse_cases + mitigations; input validation order; error-message hardening.
+    - testing:
+        - validation steps that assert each contract + interface.
+    - documentation:
+        - human-readable summaries, usage examples.
+        - optional diagrams: sequence, flow, architecture (Mermaid blocks).
+    - metadata:
+        - versioning, authorship, changelog seeds.
+    - deployment:
+        - containerization notes (Dockerfile snippet).
+        - k8s manifests (Deployment/Service), ArgoCD app hints.
+    - compliance:
+        - reference repo standards + relevant regulations (link by ID).
+    - traceability:
+        - links back to original task IDs, user stories, and validation tests.
+    - accessibility:
+        - state “N/A” for non-UI services; otherwise list a11y checks.
+    - reliability:
+        - failover behavior, readiness/liveness probes, backoff strategies.
+    - performance:
+        - expected load/latency, scalability notes, size limits (e.g., 16KiB).
+    - monitoring:
+        - Prometheus metric names, log fields, health/SLI suggestions.
+    - maintenance:
+        - update policy (use latest stable x.y.z), deprecation approach.
+    - backup_recovery:
+        - state “N/A” if stateless; otherwise describe strategy & restore test.
+
+processing_pipeline:
+  - name: load
+    steps:
+      - Prefer consolidated_tasks_json if not null; else read from path.
+      - Validate input format (required keys: content[], outputs.draft_file).
+  - name: normalize
+    steps:
+      - Canonicalize booleans/strings; trim whitespace.
+      - Normalize HTTP media types; normalize ports to integers.
+  - name: derive_artifacts
+    steps:
+      - For each task in $.content[]:
+          - Build contract object (pre/post/invariants/rollback) from objective, success_criteria, notes.
+          - Build interface specs (HTTP/env/CLI) from success_criteria + notes.
+          - Emit JSON Schemas for request/response where applicable.
+          - Emit OpenAPI path items referencing JSON Schemas.
+          - Emit CiliumNetworkPolicy allow-list derived from interfaces.ports/env.
+          - Enumerate abuse cases from body limits, content-type checks, error handling.
+          - Map validation_tests → runnable checks / acceptance criteria.
+          - Link user_stories → traceability entries.
+  - name: assemble_prp
+    steps:
+      - Merge per-task artifacts into PRP sections.
+      - Apply determinism.sort_keys and stable_ids.rule.
+      - Generate Markdown from JSON content (template if provided).
+  - name: validate
+    steps:
+      - Validate PRP JSON against templates.prp_schema_path.
+      - Ensure every PRP section has ≥1 traceability link to inputs.
+      - Mark missing items as "needs-input" with reason.
+  - name: write_outputs
+    steps:
+      - Write prp_json_path (pretty, 2-space indent, LF line endings).
+      - Write prp_markdown_path (deterministic section order).
+
+rules:
+  - Never regress repo standards; fail on contradictions with a clear diff.
+  - Security is mandatory: include abuse cases + mitigations per interface.
+  - Every contract MUST include explicit validation steps (testability).
+  - No runtime code invention; describe, don’t implement.
+  - Deterministic ordering and ID generation are required.
+
+validation:
+  conformance:
+    - json_schema: "templates/prp/draft-prp-004.json"
+  cross_linking:
+    - require_links_from: ["contracts","interfaces","schemas","security","testing","deployment","monitoring","compliance","traceability"]
+    - to: ["content.task","supporting_user_stories.id","validation_tests.id","repo_standards.id?"]
+  completeness:
+    - unanswered_policy: "needs-input"
+    - required_sections_per_task:
+        - contracts
+        - interfaces
+        - schemas
+        - testing
+        - security
+        - deployment
+        - traceability
+    - allow_na_for: ["accessibility","backup_recovery"]
+  deterministic_checks:
+    - sort_verification: true
+    - stable_id_verification: true
+
+error_handling:
+  on_missing_schema: "fail"
+  on_partial_derivation: "mark-needs-input-and-continue"
+  on_validation_error: "fail-with-report"
+  report_format:
+    - summary
+    - list_of_errors
+    - example_fixups
+
+conventions:
+  id_naming:
+    - contract:   "<TASK_ID>::contract::<slug>"
+    - interface:  "<TASK_ID>::interface::<method>_<path_slug>"
+    - schema:     "<TASK_ID>::schema::<name>"
+    - network:    "<TASK_ID>::network::<name>"
+    - security:   "<TASK_ID>::security::<name>"
+    - test:       "<TASK_ID>::test::<id>"
+  doc_mermaid_blocks: true
+  line_endings: "LF"
+  indent: 2
+
+outputs:
+  - path: "prp/drafts/P-###-T-004.json"   # wrapper draft (saved deterministically by runner)
+    must_exist: true
+  - path: "prp/active/PRP-004.json"
+    must_exist: true
+  - path: "prp/active/PRP-004.md"
+    must_exist: true
+
+# Enforce the standard wrapper used across PRP steps
+response_contract:
+  wrapper:
+    required: true
+    schema:
+      outputs:
+        draft_file:
+          type: string
+          pattern: '^prp/drafts/P-\\d{3}-T-004\\.json$'
+      content:
+        $ref: "templates/prp/draft-prp-004.json"
+
+# Cache-friendly, deterministic system context used by the runner
+system_context:
+  cache_control:
+    type: "ephemeral"
+    ttl: "1h"
+  temperature: 0.2
+  blocks:
+    - type: "text"
+      label: "KNOWN AGENTS CATALOG (JSON)"
+      source: "registry"
+      format: "json"
+      sort: "id"
+      summary_lines: 7
+    - type: "text"
+      label: "REPO CONTEXT INDEX (JSON)"
+      source: "docs/schema.json"
+      include:
+        - full_contents: true
+        - sort_by: "path"
+      limit:
+        max_files: 0
+        max_file_kb: from_schema
+    - type: "text"
+      label: "TASK RESPONSES (JSON)"
+      source: "prp/drafts/*.json"
+      include:
+        - roots_only: true
+        - sort_by: "file"
