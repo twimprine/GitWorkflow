@@ -85,9 +85,9 @@ def _slugify(text: str) -> str:
 
 def _fp8(s: str) -> str:
     try:
-        return hashlib.sha1(s.encode("utf-8")).hexdigest()[:8]
+        return hashlib.sha1(s.encode("utf-8")).hexdigest()[:6]
     except Exception:
-        return "00000000"
+        return "000000"
 
 
 def _shorten_with_hash(s: str, max_len: int = 80) -> str:
@@ -501,13 +501,13 @@ def _parse_args() -> argparse.Namespace:
     # Enabled by default; provide an explicit opt-out flag for convenience
     ap.add_argument("--include-agent-catalog", dest="include_agent_catalog", action="store_true", default=True, help="Include a JSON catalog of available agents (first N lines) in the system context (default: on)")
     ap.add_argument("--no-include-agent-catalog", dest="include_agent_catalog", action="store_false", help="Disable inclusion of the agent catalog in the system context")
-    ap.add_argument("--agent-catalog-lines", type=int, default=7, help="Number of lines from each agent file to include in the catalog (default: 7)")
+    ap.add_argument("--agent-catalog-lines", type=int, default=3, help="Number of lines from each agent file to include in the catalog (default: 3 to reduce tokens)")
     # Force responder perspective in content.agent
     ap.add_argument("--force-content-agent-self", dest="force_content_agent_self", action="store_true", default=True, help="Set content.agent to the responder's id (default: on)")
     ap.add_argument("--no-force-content-agent-self", dest="force_content_agent_self", action="store_false", help="Allow content.agent to differ from responder (model choice)")
     # Repo context via docs/schema.json
-    ap.add_argument("--include-repo-context", dest="include_repo_context", action="store_true", default=True, help="Include deterministic repo context from docs/schema.json in system context (default: on)")
-    ap.add_argument("--no-include-repo-context", dest="include_repo_context", action="store_false", help="Disable inclusion of repo context in the system context")
+    ap.add_argument("--include-repo-context", dest="include_repo_context", action="store_true", default=False, help="Include deterministic repo context from docs/schema.json in system context")
+    ap.add_argument("--no-include-repo-context", dest="include_repo_context", action="store_false", help="Disable inclusion of repo context in the system context (default: off for TASK001)")
     ap.add_argument("--context-schema", default="docs/schema.json", help="Path to schema.json defining include/exclude/extensions for repo context")
     ap.add_argument("--context-max-files", type=int, default=0, help="If >0, cap the number of files included from the schema; 0 means include all (default: 0)")
     # Testing utilities
@@ -559,7 +559,7 @@ def _build_requests(agent_ids: list[str], model: str, user_text: str, system_ext
                 "custom_id": f"panel-{aid}",
                 "params": {
                     "model": model,
-                    "max_tokens": 2048,
+                    "max_tokens": 20048,
                     "temperature": 0.2,
                     "system": system_blocks,
                     "messages": [
@@ -598,6 +598,24 @@ def _process_batch_results(items: list[Any], slug: str, out_dir: Path, *, force_
             print(item)
             continue
         text = "\n\n".join(blocks)
+
+        # DEBUG: Log raw response to diagnose short/empty responses
+        # Get agent_tag early for debugging
+        try:
+            cid_debug = getattr(item, "custom_id", None)
+        except Exception:
+            cid_debug = None
+        if cid_debug is None and isinstance(item, str):
+            try:
+                obj_debug = json.loads(item)
+                cid_debug = obj_debug.get("custom_id")
+            except Exception:
+                pass
+        agent_tag_debug = (cid_debug or "panel-unknown").replace("panel-", "")
+        print(f"DEBUG {agent_tag_debug}: raw text length = {len(text)} chars")
+        if len(text) < 200:
+            print(f"DEBUG {agent_tag_debug}: SHORT RESPONSE:\n{text}\n")
+
         data: Any = _extract_first_json_object(text) or _extract_fenced_json(text)
         if isinstance(data, str):
             try:
@@ -624,6 +642,14 @@ def _process_batch_results(items: list[Any], slug: str, out_dir: Path, *, force_
 
         outs = data.get("outputs") if isinstance(data.get("outputs"), dict) else None
         content = data.get("content") if isinstance(data.get("content"), dict) else None
+
+        # Auto-wrap if agent returned content directly without wrapper
+        if not outs and not content and isinstance(data, dict):
+            # Check if data looks like actual content (has expected task001 keys)
+            if any(k in data for k in ("atomicity", "proposed_tasks", "delegation_suggestions", "agent")):
+                content = data
+                outs = {"draft_file": f"prp/drafts/P-auto-T-001-{agent_tag}.json"}
+
         # Enforce responder perspective if requested
         if force_content_agent_self and isinstance(content, dict):
             try:
@@ -633,15 +659,20 @@ def _process_batch_results(items: list[Any], slug: str, out_dir: Path, *, force_
             except Exception:
                 pass
         if outs and isinstance(outs.get("draft_file"), str) and content:
-            # Standardized compact filename scheme using PRP sequence with order P-T
-            # New convention: P-###-T-001.json (P first, then Task id)
-            P = _next_P()
-            final = Path("prp/drafts") / f"P-{P:03d}-T-001.json"
+            # Standardized compact filename scheme using PRP sequence with order P-T-agent
+            # New convention: P-###-T-001-{agent}.json (P first, then Task id, then agent)
+            # Ensure no overwrite by retrying until we find a free P id
+            while True:
+                P = _next_P()
+                final = Path("prp/drafts") / f"P-{P:03d}-T-001-{agent_tag}.json"
+                if not final.exists():
+                    break
             final.parent.mkdir(parents=True, exist_ok=True)
             Path(final).write_text(json.dumps(data, indent=2), encoding="utf-8")
             print(f"saved -> {final}")
         else:
-            path = out_dir / f"{agent_tag}.json"
+            # Timestamp the tmp panel output to avoid overwriting across runs
+            path = out_dir / f"{agent_tag}-{batch_ts}.json"
             path.write_text(json.dumps(data, indent=2), encoding="utf-8")
             print(f"saved -> {path}")
 
@@ -730,7 +761,7 @@ def main() -> int:
 
     agents = [a.strip() for a in args.agents.split(",") if a.strip()]
     feature = _load_feature_text(args.feature_description)
-    slug = _shorten_with_hash(_slugify(feature), max_len=80)
+    slug = _fp8(feature)
 
     # Test-first: optional dry-run mode to scan and resolve suggestions without hitting the API
     if args.dry_run_suggestions:

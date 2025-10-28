@@ -176,7 +176,7 @@ def main():
             "custom_id": f"{grp}-req1",
             "params": {
                 "model": args.model,
-                "max_tokens": 2560,
+                "max_tokens": 25060,
                 "temperature": 0.9,
                 "system": [
                     {"type": "text", "text": f"You are an expert planner. Focus on the '{grp}' context."},

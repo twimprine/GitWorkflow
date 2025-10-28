@@ -1,0 +1,921 @@
+{
+  "version": "1.0.0",
+  "metadata": {
+    "prp_id": "P-000-T-004",
+    "feature": "Healthcheck Echo Server (echo-http)",
+    "scope": "Minimal HTTP server with /healthz and /echo endpoints, production-grade security, Kubernetes deployment",
+    "components": [
+      "HTTP Server",
+      "Health Check Endpoint",
+      "Echo Endpoint",
+      "Kubernetes Manifests",
+      "Docker Container",
+      "Network Policies"
+    ],
+    "out_of_scope": [
+      "ArgoCD integration and pipeline configuration",
+      "External monitoring system integration",
+      "Database persistence",
+      "Authentication/Authorization"
+    ],
+    "created_at": "2025-01-10T00:00:00Z"
+  },
+  "tasks": [
+    {
+      "task": "P-000-T-001",
+      "delegated_to": "golang-developer",
+      "objective": "Implement HTTP server with /healthz and /echo endpoints in Go",
+      "affected_components": [
+        "HTTP Server",
+        "Health Check Endpoint",
+        "Echo Endpoint"
+      ],
+      "success_criteria": [
+        "GET /healthz returns 200 OK with valid response",
+        "POST /echo accepts JSON and returns same JSON with 200 status",
+        "Server starts on configurable port with graceful shutdown",
+        "All endpoints have proper error handling and logging",
+        "100% test coverage for all handlers"
+      ],
+      "validation_tests": [
+        {
+          "id": "VT-001",
+          "description": "Health check endpoint returns 200 OK",
+          "expected_result": "GET /healthz returns status 200 with {\"status\":\"ok\"}"
+        },
+        {
+          "id": "VT-002",
+          "description": "Echo endpoint mirrors JSON payload",
+          "expected_result": "POST /echo with JSON body returns same JSON with 200 status"
+        },
+        {
+          "id": "VT-003",
+          "description": "Invalid JSON returns 400 error",
+          "expected_result": "POST /echo with malformed JSON returns 400 with error message"
+        }
+      ],
+      "supporting_user_stories": [
+        {
+          "id": "US-001",
+          "description": "As an operator, I need a health check endpoint to monitor service availability"
+        },
+        {
+          "id": "US-002",
+          "description": "As a client, I need an echo endpoint to test JSON communication"
+        }
+      ],
+      "effort": {
+        "estimated_hours": 4,
+        "complexity": "low"
+      }
+    },
+    {
+      "task": "P-000-T-002",
+      "delegated_to": "docker-specialist",
+      "objective": "Create production-grade Dockerfile with security best practices",
+      "affected_components": [
+        "Docker Container"
+      ],
+      "success_criteria": [
+        "Multi-stage build with minimal final image size",
+        "Non-root user execution",
+        "No sensitive data in image layers",
+        "Security scanning passes with no high/critical vulnerabilities",
+        "Image includes health check configuration"
+      ],
+      "validation_tests": [
+        {
+          "id": "VT-004",
+          "description": "Container runs as non-root user",
+          "expected_result": "Container process runs with UID > 1000"
+        },
+        {
+          "id": "VT-005",
+          "description": "Image size is optimized",
+          "expected_result": "Final image size < 50MB"
+        },
+        {
+          "id": "VT-006",
+          "description": "Container health check works",
+          "expected_result": "Docker health check reports healthy status"
+        }
+      ],
+      "supporting_user_stories": [
+        {
+          "id": "US-003",
+          "description": "As a security officer, I need containers to follow security best practices"
+        }
+      ],
+      "effort": {
+        "estimated_hours": 3,
+        "complexity": "low"
+      }
+    },
+    {
+      "task": "P-000-T-003",
+      "delegated_to": "kubernetes-specialist",
+      "objective": "Create Kubernetes manifests for deployment with LoadBalancer service",
+      "affected_components": [
+        "Kubernetes Manifests",
+        "Network Policies"
+      ],
+      "success_criteria": [
+        "Deployment manifest with resource limits and health probes",
+        "LoadBalancer service configured for development pool",
+        "Network policies restrict ingress/egress appropriately",
+        "ConfigMap for environment configuration",
+        "All manifests follow Kubernetes best practices"
+      ],
+      "validation_tests": [
+        {
+          "id": "VT-007",
+          "description": "Deployment creates pods successfully",
+          "expected_result": "kubectl get pods shows running status"
+        },
+        {
+          "id": "VT-008",
+          "description": "LoadBalancer service gets external IP",
+          "expected_result": "Service has EXTERNAL-IP from development pool"
+        },
+        {
+          "id": "VT-009",
+          "description": "Health probes function correctly",
+          "expected_result": "Liveness and readiness probes report healthy"
+        }
+      ],
+      "supporting_user_stories": [
+        {
+          "id": "US-004",
+          "description": "As an operator, I need the service deployed to Kubernetes with proper configuration"
+        }
+      ],
+      "effort": {
+        "estimated_hours": 4,
+        "complexity": "medium"
+      }
+    },
+    {
+      "task": "P-000-T-004",
+      "delegated_to": "security-reviewer",
+      "objective": "Review and validate security controls for production deployment",
+      "affected_components": [
+        "HTTP Server",
+        "Docker Container",
+        "Kubernetes Manifests",
+        "Network Policies"
+      ],
+      "success_criteria": [
+        "All security findings documented and mitigated",
+        "Network policies enforce least privilege",
+        "No secrets in code or configuration files",
+        "TLS/HTTPS configuration reviewed (if applicable)",
+        "Security scan results documented"
+      ],
+      "validation_tests": [
+        {
+          "id": "VT-010",
+          "description": "No high/critical vulnerabilities in dependencies",
+          "expected_result": "Security scan shows zero high/critical issues"
+        },
+        {
+          "id": "VT-011",
+          "description": "Network policies block unauthorized access",
+          "expected_result": "Unauthorized pods cannot access service"
+        },
+        {
+          "id": "VT-012",
+          "description": "Container runs with minimal privileges",
+          "expected_result": "Security context enforces non-root and read-only filesystem"
+        }
+      ],
+      "supporting_user_stories": [
+        {
+          "id": "US-003",
+          "description": "As a security officer, I need containers to follow security best practices"
+        }
+      ],
+      "effort": {
+        "estimated_hours": 3,
+        "complexity": "medium"
+      }
+    },
+    {
+      "task": "P-000-T-005",
+      "delegated_to": "documentation-writer",
+      "objective": "Create comprehensive documentation for deployment and usage",
+      "affected_components": [
+        "Documentation"
+      ],
+      "success_criteria": [
+        "README with setup and deployment instructions",
+        "API documentation for endpoints",
+        "Architecture diagram included",
+        "Troubleshooting guide provided",
+        "Examples for common use cases"
+      ],
+      "validation_tests": [
+        {
+          "id": "VT-013",
+          "description": "Documentation covers all endpoints",
+          "expected_result": "README documents /healthz and /echo with examples"
+        },
+        {
+          "id": "VT-014",
+          "description": "Deployment steps are complete",
+          "expected_result": "Following README deploys service successfully"
+        },
+        {
+          "id": "VT-015",
+          "description": "Architecture diagram is clear",
+          "expected_result": "Diagram shows all components and data flow"
+        }
+      ],
+      "supporting_user_stories": [
+        {
+          "id": "US-005",
+          "description": "As a developer, I need clear documentation to deploy and use the service"
+        }
+      ],
+      "effort": {
+        "estimated_hours": 2,
+        "complexity": "low"
+      }
+    }
+  ],
+  "contracts": [
+    {
+      "id": "C-001",
+      "title": "Health Check Endpoint Contract",
+      "preconditions": [
+        "HTTP server is running",
+        "Port is accessible"
+      ],
+      "postconditions": [
+        "Returns HTTP 200 status",
+        "Response body contains valid JSON with status field"
+      ],
+      "invariants": [
+        "Endpoint always returns within 100ms",
+        "No side effects on system state"
+      ],
+      "rollback": [
+        "N/A - read-only operation"
+      ],
+      "security": [
+        "No authentication required",
+        "Rate limiting applied",
+        "No sensitive data exposed"
+      ],
+      "validation": [
+        "Response status code is 200",
+        "Response Content-Type is application/json",
+        "Response body parses as valid JSON"
+      ]
+    },
+    {
+      "id": "C-002",
+      "title": "Echo Endpoint Contract",
+      "preconditions": [
+        "HTTP server is running",
+        "Request contains valid JSON body",
+        "Content-Type header is application/json"
+      ],
+      "postconditions": [
+        "Returns HTTP 200 status for valid JSON",
+        "Response body matches request body exactly",
+        "Returns HTTP 400 for invalid JSON"
+      ],
+      "invariants": [
+        "Request body size limited to 1MB",
+        "Response mirrors input without modification",
+        "No data persistence occurs"
+      ],
+      "rollback": [
+        "N/A - stateless operation"
+      ],
+      "security": [
+        "Input validation for JSON structure",
+        "Size limits enforced",
+        "No code execution from input",
+        "Rate limiting applied"
+      ],
+      "validation": [
+        "Response matches request body byte-for-byte",
+        "Response Content-Type is application/json",
+        "Invalid JSON returns 400 with error message"
+      ]
+    },
+    {
+      "id": "C-003",
+      "title": "Container Security Contract",
+      "preconditions": [
+        "Base image is from trusted registry",
+        "All dependencies are scanned"
+      ],
+      "postconditions": [
+        "Container runs as non-root user",
+        "No high/critical vulnerabilities present",
+        "Minimal attack surface"
+      ],
+      "invariants": [
+        "Read-only root filesystem",
+        "No privileged capabilities",
+        "Resource limits enforced"
+      ],
+      "rollback": [
+        "Revert to previous container image version"
+      ],
+      "security": [
+        "Security scanning in CI/CD pipeline",
+        "Non-root user execution",
+        "Minimal base image",
+        "No secrets in image layers"
+      ],
+      "validation": [
+        "Security scan passes",
+        "Container user UID > 1000",
+        "No writable filesystem except /tmp"
+      ]
+    }
+  ],
+  "interfaces": {
+    "http": [
+      {
+        "method": "GET",
+        "path": "/healthz",
+        "summary": "Health check endpoint for monitoring and orchestration",
+        "headers": {},
+        "response_schema_refs": [
+          "#/components/schemas/HealthResponse"
+        ],
+        "status_codes": [
+          200
+        ],
+        "constraints": [
+          "Must respond within 100ms",
+          "No authentication required",
+          "Idempotent operation"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/echo",
+        "summary": "Echo endpoint that returns the same JSON payload",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "request_schema_ref": "#/components/schemas/EchoRequest",
+        "response_schema_refs": [
+          "#/components/schemas/EchoResponse",
+          "#/components/schemas/ErrorResponse"
+        ],
+        "status_codes": [
+          200,
+          400,
+          413,
+          415
+        ],
+        "constraints": [
+          "Request body must be valid JSON",
+          "Maximum payload size 1MB",
+          "Content-Type must be application/json"
+        ]
+      }
+    ],
+    "code": [
+      {
+        "name": "HealthHandler",
+        "package": "handlers",
+        "description": "HTTP handler for health check endpoint",
+        "responsibilities": [
+          "Respond to health check requests",
+          "Return service status",
+          "Log health check requests"
+        ],
+        "invariants": [
+          "Always returns 200 status",
+          "Response time < 100ms"
+        ],
+        "methods": [
+          {
+            "name": "ServeHTTP",
+            "params": [
+              "w http.ResponseWriter",
+              "r *http.Request"
+            ],
+            "returns": "void",
+            "summary": "Handle HTTP health check request",
+            "preconditions": [
+              "Request method is GET"
+            ],
+            "postconditions": [
+              "Response written with status 200",
+              "JSON response body written"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "EchoHandler",
+        "package": "handlers",
+        "description": "HTTP handler for echo endpoint",
+        "responsibilities": [
+          "Parse incoming JSON request",
+          "Validate JSON structure",
+          "Return same JSON in response",
+          "Handle errors appropriately"
+        ],
+        "invariants": [
+          "Request body size <= 1MB",
+          "Response matches request for valid input"
+        ],
+        "methods": [
+          {
+            "name": "ServeHTTP",
+            "params": [
+              "w http.ResponseWriter",
+              "r *http.Request"
+            ],
+            "returns": "void",
+            "summary": "Handle HTTP echo request",
+            "preconditions": [
+              "Request method is POST",
+              "Content-Type is application/json"
+            ],
+            "postconditions": [
+              "Valid JSON returns 200 with same payload",
+              "Invalid JSON returns 400 with error"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Server",
+        "package": "server",
+        "description": "HTTP server with graceful shutdown",
+        "responsibilities": [
+          "Initialize HTTP server",
+          "Register handlers",
+          "Handle graceful shutdown",
+          "Configure timeouts and limits"
+        ],
+        "invariants": [
+          "Server listens on configured port",
+          "Graceful shutdown timeout is 30s"
+        ],
+        "methods": [
+          {
+            "name": "Start",
+            "params": [
+              "port string"
+            ],
+            "returns": "error",
+            "summary": "Start HTTP server on specified port",
+            "preconditions": [
+              "Port is valid and available",
+              "Handlers are registered"
+            ],
+            "postconditions": [
+              "Server is listening on port",
+              "Ready to accept connections"
+            ]
+          },
+          {
+            "name": "Shutdown",
+            "params": [
+              "ctx context.Context"
+            ],
+            "returns": "error",
+            "summary": "Gracefully shutdown server",
+            "preconditions": [
+              "Server is running"
+            ],
+            "postconditions": [
+              "All active connections completed",
+              "Server stopped listening"
+            ]
+          }
+        ]
+      }
+    ],
+    "env": [
+      {
+        "name": "PORT",
+        "default": "8080",
+        "description": "HTTP server listening port",
+        "constraints": "Must be valid port number (1-65535)"
+      },
+      {
+        "name": "LOG_LEVEL",
+        "default": "info",
+        "description": "Logging level (debug, info, warn, error)",
+        "constraints": "Must be one of: debug, info, warn, error"
+      },
+      {
+        "name": "MAX_BODY_SIZE",
+        "default": "1048576",
+        "description": "Maximum request body size in bytes",
+        "constraints": "Must be positive integer, recommended <= 1MB"
+      },
+      {
+        "name": "READ_TIMEOUT",
+        "default": "5s",
+        "description": "HTTP read timeout duration",
+        "constraints": "Valid Go duration string"
+      },
+      {
+        "name": "WRITE_TIMEOUT",
+        "default": "10s",
+        "description": "HTTP write timeout duration",
+        "constraints": "Valid Go duration string"
+      }
+    ]
+  },
+  "schemas": {
+    "openapi": {
+      "openapi": "3.0.0",
+      "info": {
+        "title": "Echo HTTP Service",
+        "version": "1.0.0",
+        "description": "Minimal HTTP server with health check and echo endpoints"
+      },
+      "paths": {
+        "/healthz": {
+          "get": {
+            "summary": "Health check endpoint",
+            "responses": {
+              "200": {
+                "description": "Service is healthy",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HealthResponse"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "/echo": {
+          "post": {
+            "summary": "Echo JSON payload",
+            "requestBody": {
+              "required": true,
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/EchoRequest"
+                  }
+                }
+              }
+            },
+            "responses": {
+              "200": {
+                "description": "Successfully echoed payload",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/EchoResponse"
+                    }
+                  }
+                }
+              },
+              "400": {
+                "description": "Invalid JSON",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  }
+                }
+              },
+              "413": {
+                "description": "Payload too large",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  }
+                }
+              },
+              "415": {
+                "description": "Unsupported media type",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "components": {
+        "schemas": {
+          "HealthResponse": {
+            "type": "object",
+            "required": [
+              "status"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "ok"
+                ]
+              }
+            }
+          },
+          "EchoRequest": {
+            "type": "object",
+            "description": "Any valid JSON object"
+          },
+          "EchoResponse": {
+            "type": "object",
+            "description": "Same as request body"
+          },
+          "ErrorResponse": {
+            "type": "object",
+            "required": [
+              "error"
+            ],
+            "properties": {
+              "error": {
+                "type": "string",
+                "description": "Error message"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "security": {
+    "abuse_cases": [
+      "Large payload DoS attack",
+      "JSON parsing DoS with deeply nested objects",
+      "Rapid health check requests overwhelming server",
+      "Container escape attempts",
+      "Network scanning from compromised pod"
+    ],
+    "findings": [
+      {
+        "id": "SEC-001",
+        "description": "Unbounded request body size could lead to memory exhaustion",
+        "mitigations": [
+          "Implement MAX_BODY_SIZE limit (1MB default)",
+          "Use http.MaxBytesReader to enforce limit",
+          "Return 413 status for oversized requests"
+        ]
+      },
+      {
+        "id": "SEC-002",
+        "description": "JSON parsing of malicious payloads could cause DoS",
+        "mitigations": [
+          "Set maximum nesting depth for JSON parser",
+          "Implement request timeout",
+          "Use streaming JSON parser with limits"
+        ]
+      },
+      {
+        "id": "SEC-003",
+        "description": "Container running as root increases attack surface",
+        "mitigations": [
+          "Run container as non-root user (UID 1000)",
+          "Use read-only root filesystem",
+          "Drop all capabilities except NET_BIND_SERVICE if needed"
+        ]
+      },
+      {
+        "id": "SEC-004",
+        "description": "Unrestricted network access from pod",
+        "mitigations": [
+          "Implement Kubernetes NetworkPolicy",
+          "Restrict egress to only required services",
+          "Limit ingress to LoadBalancer only"
+        ]
+      },
+      {
+        "id": "SEC-005",
+        "description": "No rate limiting on endpoints",
+        "mitigations": [
+          "Implement rate limiting middleware",
+          "Configure per-IP rate limits",
+          "Use token bucket algorithm for fairness"
+        ]
+      }
+    ]
+  },
+  "testing": {
+    "validation_steps": [
+      "Unit tests for all handlers with 100% coverage",
+      "Integration tests for HTTP endpoints",
+      "Load testing with concurrent requests",
+      "Security scanning of container image",
+      "Kubernetes manifest validation with kubeval",
+      "Network policy testing in isolated namespace",
+      "Health probe validation in Kubernetes",
+      "Graceful shutdown testing",
+      "Error handling validation for malformed JSON",
+      "Timeout testing for slow clients"
+    ]
+  },
+  "deployment": {
+    "container": {
+      "base_image": "golang:1.21-alpine AS builder",
+      "final_image": "alpine:3.19",
+      "user": "nonroot:1000",
+      "health_check": {
+        "test": "wget --no-verbose --tries=1 --spider http://localhost:8080/healthz || exit 1",
+        "interval": "30s",
+        "timeout": "3s",
+        "retries": 3
+      },
+      "security": {
+        "read_only_root_fs": true,
+        "no_new_privileges": true,
+        "capabilities_drop": [
+          "ALL"
+        ]
+      }
+    },
+    "k8s": {
+      "deployment": {
+        "replicas": 2,
+        "strategy": "RollingUpdate",
+        "resources": {
+          "requests": {
+            "cpu": "100m",
+            "memory": "64Mi"
+          },
+          "limits": {
+            "cpu": "200m",
+            "memory": "128Mi"
+          }
+        },
+        "liveness_probe": {
+          "http_get": {
+            "path": "/healthz",
+            "port": 8080
+          },
+          "initial_delay_seconds": 10,
+          "period_seconds": 10
+        },
+        "readiness_probe": {
+          "http_get": {
+            "path": "/healthz",
+            "port": 8080
+          },
+          "initial_delay_seconds": 5,
+          "period_seconds": 5
+        }
+      },
+      "service": {
+        "type": "LoadBalancer",
+        "port": 80,
+        "target_port": 8080,
+        "load_balancer_source_ranges": [
+          "development-pool"
+        ]
+      }
+    }
+  },
+  "network_policies": [
+    {
+      "name": "echo-http-netpol",
+      "ingress": [
+        "Allow from LoadBalancer on port 8080"
+      ],
+      "egress": [
+        "Allow DNS to kube-dns on port 53",
+        "Deny all other egress"
+      ]
+    }
+  ],
+  "traceability": {
+    "links": [
+      {
+        "source_id": "US-001",
+        "target_id": "P-000-T-001",
+        "relation": "implemented_by"
+      },
+      {
+        "source_id": "US-002",
+        "target_id": "P-000-T-001",
+        "relation": "implemented_by"
+      },
+      {
+        "source_id": "US-003",
+        "target_id": "P-000-T-002",
+        "relation": "implemented_by"
+      },
+      {
+        "source_id": "US-003",
+        "target_id": "P-000-T-004",
+        "relation": "validated_by"
+      },
+      {
+        "source_id": "US-004",
+        "target_id": "P-000-T-003",
+        "relation": "implemented_by"
+      },
+      {
+        "source_id": "US-005",
+        "target_id": "P-000-T-005",
+        "relation": "implemented_by"
+      },
+      {
+        "source_id": "P-000-T-001",
+        "target_id": "C-001",
+        "relation": "implements"
+      },
+      {
+        "source_id": "P-000-T-001",
+        "target_id": "C-002",
+        "relation": "implements"
+      },
+      {
+        "source_id": "P-000-T-002",
+        "target_id": "C-003",
+        "relation": "implements"
+      },
+      {
+        "source_id": "VT-001",
+        "target_id": "C-001",
+        "relation": "validates"
+      },
+      {
+        "source_id": "VT-002",
+        "target_id": "C-002",
+        "relation": "validates"
+      },
+      {
+        "source_id": "VT-003",
+        "target_id": "C-002",
+        "relation": "validates"
+      },
+      {
+        "source_id": "VT-004",
+        "target_id": "C-003",
+        "relation": "validates"
+      },
+      {
+        "source_id": "VT-010",
+        "target_id": "SEC-001",
+        "relation": "validates"
+      },
+      {
+        "source_id": "VT-010",
+        "target_id": "SEC-002",
+        "relation": "validates"
+      },
+      {
+        "source_id": "VT-012",
+        "target_id": "SEC-003",
+        "relation": "validates"
+      }
+    ]
+  },
+  "performance": {
+    "requirements": [
+      "Health check response time < 100ms at p99",
+      "Echo endpoint response time < 200ms at p99",
+      "Support 1000 concurrent connections",
+      "Handle 10000 requests per second"
+    ],
+    "benchmarks": [
+      "Load test with 1000 concurrent users",
+      "Stress test with increasing load until failure",
+      "Endurance test for 24 hours"
+    ]
+  },
+  "monitoring": {
+    "metrics": [
+      "HTTP request count by endpoint and status",
+      "Request duration histogram",
+      "Active connections gauge",
+      "Error rate by type"
+    ],
+    "logging": [
+      "Structured JSON logging",
+      "Request/response logging at debug level",
+      "Error logging with stack traces",
+      "Health check requests at trace level"
+    ]
+  },
+  "reliability": {
+    "availability_target": "99.9%",
+    "recovery_time_objective": "5 minutes",
+    "recovery_point_objective": "N/A (stateless)",
+    "failure_modes": [
+      "Pod crash - handled by Kubernetes restart",
+      "Node failure - handled by pod rescheduling",
+      "Network partition - handled by LoadBalancer health checks"
+    ]
+  }
+}

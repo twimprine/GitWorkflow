@@ -78,16 +78,16 @@ def _ensure_parent_dir(path_str: str) -> None:
 
 
 def _shorten_for_filename(name: str, max_len: int = 120) -> str:
-    """Shorten a potentially long name for use in a filename by keeping a prefix and adding an 8-char hash.
+    """Shorten a potentially long name for use in a filename by keeping a prefix and adding a 6-char hash.
 
     Guarantees length <= max_len and minimally 1 char of original name retained.
     """
     if len(name) <= max_len:
         return name
     try:
-        h = hashlib.sha1(name.encode("utf-8")).hexdigest()[:8]
+        h = hashlib.sha1(name.encode("utf-8")).hexdigest()[:6]
     except Exception:
-        h = "00000000"
+        h = "000000"
     keep = max_len - 1 - len(h)
     base = name[: max(1, keep)].rstrip("-")
     return f"{base}-{h}"
@@ -123,9 +123,9 @@ def _read_text(path: Path) -> Optional[str]:
 
 def _fp8(s: str) -> str:
     try:
-        return hashlib.sha1(s.encode("utf-8")).hexdigest()[:8]
+        return hashlib.sha1(s.encode("utf-8")).hexdigest()[:6]
     except Exception:
-        return "00000000"
+        return "000000"
 
 
 def _short_custom_id(prefix: str, slug: str, max_len: int = 64) -> str:
@@ -135,8 +135,8 @@ def _short_custom_id(prefix: str, slug: str, max_len: int = 64) -> str:
         return cid
     h = _fp8(slug)
     # We will format as: <prefix>-<short>-<hash>
-    # total length = len(prefix) + 1 + len(short) + 1 + 8 <= max_len
-    allow_short = max_len - len(prefix) - 1 - 1 - 8
+    # total length = len(prefix) + 1 + len(short) + 1 + 6 <= max_len
+    allow_short = max_len - len(prefix) - 1 - 1 - 6
     short = slug[: max(1, allow_short)]
     return f"{prefix}-{short}-{h}"
 
@@ -230,6 +230,263 @@ def _read_json(path: Path) -> Optional[Dict[str, Any]]:
         return None
 
 
+def _looks_like_content(obj: Any) -> bool:
+    if not isinstance(obj, dict):
+        return False
+    keys = set(obj.keys())
+    required = {"version", "metadata"}
+    return bool(required.issubset(keys))
+
+
+def _list_latest_archived_drafts() -> List[Path]:
+    """Return draft JSON files from the most recent archive timestamp, if any.
+
+    Looks under archive/{ts}/P-###/drafts/*.json and returns all files for the latest {ts}.
+    """
+    arch_root = Path("archive")
+    if not arch_root.exists():
+        return []
+    # Find timestamp dirs
+    ts_dirs = [p for p in arch_root.iterdir() if p.is_dir()]
+    if not ts_dirs:
+        return []
+    # Sort lexicographically; our ts format supports this ordering
+    ts_dirs.sort(key=lambda p: p.name, reverse=True)
+    for tsd in ts_dirs:
+        drafts: List[Path] = []
+        for pdir in sorted((tsd.glob("P-*/drafts")), key=lambda x: x.name):
+            drafts.extend(sorted(pdir.glob("*.json"), key=lambda x: x.name))
+        if drafts:
+            return drafts
+    return []
+
+
+def _load_latest_archived_active_content() -> Optional[Dict[str, Any]]:
+    arch_root = Path("archive")
+    if not arch_root.exists():
+        return None
+    ts_dirs = [p for p in arch_root.iterdir() if p.is_dir()]
+    ts_dirs.sort(key=lambda p: p.name, reverse=True)
+    for tsd in ts_dirs:
+        # search deepest P-*/active/PRP-004.json
+        for act_dir in sorted(tsd.glob("P-*/active"), key=lambda x: x.name, reverse=True):
+            cand = act_dir / "PRP-004.json"
+            if cand.exists():
+                obj = _read_json(cand)
+                if isinstance(obj, dict):
+                    return obj
+    return None
+
+
+def _render_markdown_from_content(content: Dict[str, Any], prompt_path: str) -> str:
+    template_md = Path(prompt_path)
+    raw_md_template = template_md.read_text(encoding="utf-8", errors="replace").rstrip() if template_md.exists() else "# PRP-004"
+
+    def _safe_join(val: Any, sep: str = ", ") -> str:
+        if isinstance(val, list):
+            return sep.join(str(x) for x in val)
+        if isinstance(val, (str, int, float)) or val is None:
+            return "" if val is None else str(val)
+        return json.dumps(val)
+
+    def _unique_ordered(seq: List[Any], key=lambda x: x) -> List[Any]:
+        seen = set()
+        out = []
+        for item in seq:
+            k = key(item)
+            if k in seen:
+                continue
+            seen.add(k)
+            out.append(item)
+        return out
+
+    md_ctx: Dict[str, Any] = {}
+    meta = content.get("metadata", {}) if isinstance(content, dict) else {}
+    md_ctx["purpose"] = meta.get("feature", "")
+    md_ctx["scope"] = meta.get("scope", "")
+    md_ctx["components"] = _safe_join(meta.get("components", []))
+    md_ctx["out_of_scope"] = _safe_join(meta.get("out_of_scope", []))
+
+    affected: List[str] = []
+    for t in content.get("tasks", []) if isinstance(content, dict) else []:
+        comps = t.get("affected_components", []) if isinstance(t, dict) else []
+        for c in comps:
+            if isinstance(c, str):
+                affected.append(c)
+    md_ctx["source_files"] = _safe_join(_unique_ordered(sorted(affected)))
+
+    stories: List[Dict[str, Any]] = []
+    for t in content.get("tasks", []) if isinstance(content, dict) else []:
+        us = t.get("supporting_user_stories", []) if isinstance(t, dict) else []
+        for s in us:
+            if isinstance(s, dict):
+                stories.append({"id": s.get("id", ""), "description": s.get("description", "")})
+    stories = _unique_ordered(sorted(stories, key=lambda x: (str(x.get("id", "")), str(x.get("description", "")))), key=lambda x: (x.get("id"), x.get("description")))
+    md_ctx["user_stories"] = stories
+
+    interfaces = content.get("interfaces", {}) if isinstance(content, dict) else {}
+    # HTTP and env
+    http_eps = interfaces.get("http", []) if isinstance(interfaces, dict) else []
+    if isinstance(http_eps, list):
+        http_eps = sorted(http_eps, key=lambda e: (str(e.get("method", "")), str(e.get("path", ""))))
+    env_vars = interfaces.get("env", []) if isinstance(interfaces, dict) else []
+    if isinstance(env_vars, list):
+        env_vars = sorted(env_vars, key=lambda e: str(e.get("name", "")))
+    md_ctx["http"] = {"endpoints": http_eps}
+    md_ctx["env"] = env_vars
+    base_port = ""
+    try:
+        for e in env_vars:
+            if isinstance(e, dict) and e.get("name") == "PORT":
+                base_port = str(e.get("default", ""))
+                break
+    except Exception:
+        base_port = ""
+    md_ctx["base_port"] = base_port
+    md_ctx["runtime"] = meta.get("runtime", "")
+    md_ctx["env_port_summary"] = f"PORT={base_port}" if base_port else ""
+    md_ctx["process_model"] = meta.get("process_model", "")
+
+    # Contracts mapping
+    contracts_in = content.get("contracts", []) if isinstance(content, dict) else []
+    mapped_contracts: List[Dict[str, Any]] = []
+    for c in contracts_in:
+        if not isinstance(c, dict):
+            continue
+        mapped_contracts.append({
+            "id": c.get("id", ""),
+            "title": c.get("title", ""),
+            "pre": _safe_join(c.get("preconditions", [])),
+            "post": _safe_join(c.get("postconditions", [])),
+            "invariants": _safe_join(c.get("invariants", [])),
+            "rollback": _safe_join(c.get("rollback", [])),
+            "security": _safe_join(c.get("security", [])),
+            "validation": _safe_join(c.get("validation", [])),
+        })
+    mapped_contracts = sorted(mapped_contracts, key=lambda x: str(x.get("id", "")))
+    md_ctx["contracts"] = mapped_contracts
+
+    # Schemas
+    schemas = content.get("schemas", {}) if isinstance(content, dict) else {}
+    md_ctx["openapi"] = schemas.get("openapi", "") if isinstance(schemas, dict) else ""
+
+    # Application/Class interfaces (code-level)
+    code_if = []
+    if isinstance(interfaces, dict):
+        code_if = interfaces.get("code", []) or []
+    norm_code_if = []
+    for ci in code_if if isinstance(code_if, list) else []:
+        if not isinstance(ci, dict):
+            continue
+        methods = ci.get("methods", []) if isinstance(ci.get("methods"), list) else []
+        norm_methods = []
+        for m in methods:
+            if not isinstance(m, dict):
+                continue
+            params = m.get("params", [])
+            if isinstance(params, list):
+                params_str = ", ".join(str(p) for p in params)
+            else:
+                params_str = str(params) if params is not None else ""
+            norm_methods.append({
+                "name": m.get("name", ""),
+                "params": params_str,
+                "returns": m.get("returns", "void"),
+                "summary": m.get("summary", ""),
+                "preconditions": ", ".join(m.get("preconditions", [])) if isinstance(m.get("preconditions"), list) else (m.get("preconditions", "")),
+                "postconditions": ", ".join(m.get("postconditions", [])) if isinstance(m.get("postconditions"), list) else (m.get("postconditions", "")),
+            })
+        norm_code_if.append({
+            "name": ci.get("name", ""),
+            "package": ci.get("package", ""),
+            "description": ci.get("description", ""),
+            "responsibilities": ", ".join(ci.get("responsibilities", [])) if isinstance(ci.get("responsibilities"), list) else (ci.get("responsibilities", "")),
+            "invariants": ", ".join(ci.get("invariants", [])) if isinstance(ci.get("invariants"), list) else (ci.get("invariants", "")),
+            "methods": norm_methods,
+        })
+    md_ctx["code_interfaces"] = norm_code_if
+
+    # Implementation steps
+    impl_steps = []
+    for t in content.get("tasks", []) if isinstance(content, dict) else []:
+        if isinstance(t, dict):
+            impl_steps.append({"task": t.get("task", ""), "objective": t.get("objective", "")})
+    md_ctx["implementation_steps"] = impl_steps
+
+    # Renderer utilities
+    def _get_by_path(ctx: Dict[str, Any], path: str) -> Any:
+        cur: Any = ctx
+        for part in path.split('.'):
+            if isinstance(cur, dict):
+                cur = cur.get(part)
+            else:
+                return None
+        return cur
+
+    def _render_vars(text: str, scope: Dict[str, Any]) -> str:
+        import re as _re
+        def repl(m):
+            k = m.group(1).strip()
+            v = _get_by_path(scope, k) if '.' in k else scope.get(k)
+            if v is None:
+                return ""
+            if isinstance(v, list):
+                return ", ".join(str(x) for x in v)
+            if isinstance(v, (dict)):
+                try:
+                    return json.dumps(v, indent=2)
+                except Exception:
+                    return str(v)
+            return str(v)
+        return _re.sub(r"{{\s*([^#/{][^}]*)\s*}}", repl, text)
+
+    def _render_each(text: str, ctx: Dict[str, Any]) -> str:
+        import re as _re
+        pattern = _re.compile(r"{{#each\s+([a-zA-Z0-9_\.]+)}}(.*?){{/each}}", _re.DOTALL)
+        while True:
+            m = pattern.search(text)
+            if not m:
+                break
+            path = m.group(1)
+            block = m.group(2)
+            items = _get_by_path(ctx, path)
+            rendered = ""
+            if isinstance(items, list) and len(items) > 0:
+                for it in items:
+                    if isinstance(it, dict):
+                        inner = _render_each(block, {**ctx, **it})
+                        rendered += _render_vars(inner, {**ctx, **it})
+                    else:
+                        inner = _render_each(block, {**ctx, "this": it})
+                        rendered += _render_vars(inner, {**ctx, "this": it})
+            # Replace entire block with rendered (empty string if no items or not a list)
+            text = text[: m.start()] + rendered + text[m.end():]
+        return text
+
+    rendered_md = _render_vars(_render_each(raw_md_template, md_ctx), md_ctx)
+    # Clean up any stray closing tags that may remain after nested-each processing
+    rendered_md = re.sub(r"^\s*{{/each}}\s*$", "", rendered_md, flags=re.MULTILINE)
+
+    # Orphan each for implementation_steps
+    orphan_tag = "{{#each implementation_steps}}"
+    if orphan_tag in rendered_md:
+        impl_steps_lines = []
+        for s in md_ctx.get("implementation_steps", []) or []:
+            if isinstance(s, dict):
+                t = str(s.get("task", "")).strip()
+                obj = str(s.get("objective", "")).strip()
+                if t or obj:
+                    impl_steps_lines.append(f"- {t}: {obj}" if t and obj else f"- {t}{obj}")
+        replacement = ("\n" + "\n".join(impl_steps_lines) + "\n") if impl_steps_lines else "\n"
+        rendered_md = rendered_md.replace(orphan_tag, replacement)
+
+    appendix = (
+        "\n\n---\n\n## Appendix A — Consolidated PRP JSON (authoritative machine content)\n\n" +
+        "```json\n" + json.dumps(content, indent=2) + "\n```\n"
+    )
+    return rendered_md + appendix
+
+
 def _select_consolidator_agent(preferred: Optional[str]) -> str:
     """Select a consolidator agent, preferring the provided name, else first available registry agent."""
     if preferred:
@@ -285,9 +542,12 @@ def _wrap_content_only(obj: Dict[str, Any], dest_hint: str) -> Dict[str, Any]:
 
     Ensures it matches { outputs: { draft_file }, content: {...} }.
     """
-    if "outputs" in obj and "content" in obj and isinstance(obj["outputs"], dict) and isinstance(obj["content"], dict):
+    if "outputs" in obj and "content" in obj and isinstance(obj.get("outputs"), dict) and isinstance(obj.get("content"), dict):
         return obj
-    return {"outputs": {"draft_file": dest_hint}, "content": obj if isinstance(obj, dict) else {}}
+    # Heuristics: consider it "content-like" only if it contains expected top-level keys
+    looks_like_content = any(k in obj for k in ("version", "metadata", "tasks", "contracts", "interfaces", "schemas"))
+    content_obj: Dict[str, Any] = obj if looks_like_content else {}
+    return {"outputs": {"draft_file": dest_hint}, "content": content_obj}
 
 
 def _extract_first_json_object(text: str) -> Optional[Dict[str, Any]]:
@@ -331,6 +591,11 @@ def main() -> int:
     ap.add_argument("--validate-schema", action="store_true", help="Validate content against the JSON Schema before writing active outputs")
     ap.add_argument("--limit-drafts", type=int, default=0)
     ap.add_argument("--repair-attempts", type=int, default=1)
+    # Long-running batch controls
+    ap.add_argument("--no-poll", action="store_true", help="Create the batch and exit immediately; use --resume-batch later to finalize")
+    ap.add_argument("--resume-batch", dest="resume_batch", default=None, help="Resume by retrieving results for an existing batch ID and finalizing outputs")
+    ap.add_argument("--max-polls", dest="cli_max_polls", type=int, default=None, help="Override max polls before timing out (else env TASK004_MAX_POLLS, default 180)")
+    ap.add_argument("--poll-interval", dest="cli_poll_interval", type=float, default=None, help="Override seconds between polls (else env TASK004_POLL_INTERVAL, default 2.0)")
     args = ap.parse_args()
 
     try:
@@ -405,6 +670,10 @@ def main() -> int:
                 "meta": {"feature": feature, "note": "auto-generated consolidated stub (no prior drafts)"}
             }
         files = _list_draft_files(None, ts) if ts else []
+        # If no drafts in prp/drafts, attempt to pull latest from archive
+        if not files:
+            archived = _list_latest_archived_drafts()
+            files = archived
         if not files and consolidated_obj is None:
             # If still no inputs and we didn't set consolidated_obj, fail explicitly
             print("ERROR: No inputs available for TASK004 and no fallback created; provide --consolidated-path or --consolidated-json")
@@ -452,7 +721,50 @@ def main() -> int:
     if prefix:
         user_text = "Task Prompt (verbatim, read fully):\n" + prefix.strip() + "\n\n" + user_text
 
+    # Offline short-circuit: if consolidated_obj is already a PRP-shaped content, bypass AI and write outputs
+    if consolidated_obj is not None and _looks_like_content(consolidated_obj):
+        seq_path = Path("prp/prp_seq.json")
+        prp_id = _alloc_prp_id(seq_path)
+        draft_file_path = f"prp/drafts/P-{prp_id:03d}-T-004.json"
+        payload = {"outputs": {"draft_file": draft_file_path}, "content": consolidated_obj}
+        # Write wrapper draft
+        _ensure_parent_dir(draft_file_path)
+        Path(draft_file_path).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        print(f"Saved wrapper draft -> {draft_file_path}")
+        # Proceed to schema validation + active/markdown writing below
+        content = consolidated_obj
+        # Optionally validate
+        if args.validate_schema and _looks_like_content(content):
+            try:
+                import jsonschema  # type: ignore
+                schema_obj = json.loads(Path(args.template).read_text(encoding="utf-8", errors="replace"))
+                jsonschema.validate(instance=content, schema=schema_obj)
+                print("Schema validation: PASS")
+            except Exception as e:
+                print(f"Schema validation: FAIL -> {e}")
+        # Write active JSON and Markdown (offline path)
+        active_json = Path("prp/active/PRP-004.json")
+        _ensure_parent_dir(str(active_json))
+        active_json.write_text(json.dumps(content, indent=2), encoding="utf-8")
+        md_path = Path("prp/active/PRP-004.md")
+        md_text = _render_markdown_from_content(content, args.prompt)
+        _ensure_parent_dir(str(md_path))
+        md_path.write_text(md_text, encoding="utf-8")
+        print(f"Wrote active outputs -> {active_json} and {md_path}")
+        return 0
+
+    # Online path
     client = anthropic.Anthropic(api_key=api_key)
+    # Helper to persist batch metadata for later resume
+    def _persist_batch(kind: str, batch_id: str, req_obj: Dict[str, Any], timestamp: str) -> None:
+        meta_path = Path(f"tmp/batches/t004/{batch_id}.json")
+        _ensure_parent_dir(str(meta_path))
+        meta = {"kind": kind, "batch_id": batch_id, "created_at": timestamp, "request": req_obj}
+        try:
+            meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+            print(f"Saved batch metadata -> {meta_path}")
+        except Exception as e:
+            print(f"WARN: Failed to persist batch metadata: {e}")
     batch_ts = datetime.now().strftime("%Y%m%d-%H%M%S")
     # Build cache-friendly, deterministic system blocks
     agents_catalog = json.dumps(_list_agents_catalog(), ensure_ascii=False)
@@ -480,16 +792,52 @@ def main() -> int:
         },
     }
 
-    batch = client.messages.batches.create(requests=cast(Any, [req]))
-    print(f"batch_id={batch.id} status={batch.processing_status} count=1")
-    while True:
-        b = client.messages.batches.retrieve(batch.id)
-        if b.processing_status in ("ended", "failed", "expired"):
-            break
-        print(f"poll: status={b.processing_status}")
-        import time as _t
-        _t.sleep(2)
-    results = list(client.messages.batches.results(batch.id))
+    # Resume mode: fetch results for an existing batch id
+    if args.resume_batch:
+        batch_id = args.resume_batch
+        print(f"Resuming existing batch -> {batch_id}")
+        # Poll once or up to limits depending on provided flags
+        polls = 0
+        max_polls = args.cli_max_polls if args.cli_max_polls is not None else int(os.getenv("TASK004_MAX_POLLS", "1"))
+        poll_interval = args.cli_poll_interval if args.cli_poll_interval is not None else float(os.getenv("TASK004_POLL_INTERVAL", "2.0"))
+        while True:
+            b = client.messages.batches.retrieve(batch_id)
+            if b.processing_status in ("ended", "failed", "expired"):
+                break
+            if max_polls > 0 and polls >= max_polls:
+                print(f"INFO: Resume poll limit reached ({polls}); status={b.processing_status}. Try again later.")
+                return 3
+            print(f"resume poll: status={b.processing_status}")
+            import time as _t
+            _t.sleep(poll_interval)
+            polls += 1
+        results = list(client.messages.batches.results(batch_id))
+    else:
+        batch = client.messages.batches.create(requests=cast(Any, [req]))
+        print(f"batch_id={batch.id} status={batch.processing_status} count=1")
+        _persist_batch("create", batch.id, req, batch_ts)
+        if args.no_poll:
+            print("--no-poll set: exiting after creation. Use --resume-batch <id> to finalize.")
+            return 0
+        # Poll with timeout to avoid indefinite waits; configurable via CLI/env
+        polls = 0
+        max_polls = args.cli_max_polls if args.cli_max_polls is not None else int(os.getenv("TASK004_MAX_POLLS", "180"))
+        poll_interval = args.cli_poll_interval if args.cli_poll_interval is not None else float(os.getenv("TASK004_POLL_INTERVAL", "2.0"))
+        while True:
+            b = client.messages.batches.retrieve(batch.id)
+            if b.processing_status in ("ended", "failed", "expired"):
+                break
+            if max_polls > 0 and polls >= max_polls:
+                print(f"ERROR: Batch polling timed out after {polls} polls (status={b.processing_status})")
+                timeout_path = f"tmp/raw/t004-timeout-{batch_ts}.txt"
+                _ensure_parent_dir(timeout_path)
+                Path(timeout_path).write_text(f"status={b.processing_status}\n", encoding="utf-8")
+                return 3
+            print(f"poll: status={b.processing_status}")
+            import time as _t
+            _t.sleep(poll_interval)
+            polls += 1
+        results = list(client.messages.batches.results(batch.id))
     if not results:
         print("ERROR: No results returned by batch")
         return 2
@@ -597,13 +945,24 @@ def main() -> int:
         }
         rep_batch = client.messages.batches.create(requests=cast(Any, [repair_req]))
         print(f"repair_batch_id={rep_batch.id} status={rep_batch.processing_status} count=1")
+        _persist_batch("repair", rep_batch.id, repair_req, batch_ts)
+        rep_polls = 0
+        rep_max_polls = args.cli_max_polls if args.cli_max_polls is not None else int(os.getenv("TASK004_MAX_POLLS", "180"))
+        rep_poll_interval = args.cli_poll_interval if args.cli_poll_interval is not None else float(os.getenv("TASK004_POLL_INTERVAL", "2.0"))
         while True:
             b = client.messages.batches.retrieve(rep_batch.id)
             if b.processing_status in ("ended", "failed", "expired"):
                 break
+            if rep_max_polls > 0 and rep_polls >= rep_max_polls:
+                print(f"ERROR: Repair batch polling timed out after {rep_polls} polls (status={b.processing_status})")
+                rep_timeout_path = f"tmp/raw/t004-repair-timeout-{batch_ts}.txt"
+                _ensure_parent_dir(rep_timeout_path)
+                Path(rep_timeout_path).write_text(f"status={b.processing_status}\n", encoding="utf-8")
+                return 3
             print(f"repair poll: status={b.processing_status}")
             import time as _t
-            _t.sleep(2)
+            _t.sleep(rep_poll_interval)
+            rep_polls += 1
         rep_results = list(client.messages.batches.results(rep_batch.id))
         if not rep_results:
             print("ERROR: No results returned by repair batch")
@@ -640,9 +999,9 @@ def main() -> int:
     Path(draft_file_path).write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(f"Saved wrapper draft -> {draft_file_path}")
 
-    # Optionally validate content against schema
+    # Optionally validate content against schema (only if it looks like PRP content)
     content = payload.get("content", {}) if isinstance(payload.get("content"), dict) else {}
-    if args.validate_schema:
+    if args.validate_schema and _looks_like_content(content):
         try:
             import jsonschema  # type: ignore
             schema_obj = json.loads(Path(args.template).read_text(encoding="utf-8", errors="replace"))
@@ -651,9 +1010,15 @@ def main() -> int:
         except Exception as e:
             print(f"Schema validation: FAIL -> {e}")
             # Non-fatal by default; YAML can enforce fail-if-invalid
+    elif args.validate_schema:
+        print("Schema validation: SKIP (content is empty or not PRP-shaped)")
     active_json = Path("prp/active/PRP-004.json")
     _ensure_parent_dir(str(active_json))
-    active_json.write_text(json.dumps(content, indent=2), encoding="utf-8")
+    # Only write active content if it looks like a valid PRP content object; otherwise preserve existing
+    if _looks_like_content(content):
+        active_json.write_text(json.dumps(content, indent=2), encoding="utf-8")
+    else:
+        print("WARN: Content is empty/non-PRP; preserving existing prp/active/PRP-004.json")
 
     # Write active Markdown by rendering the template with a minimal Handlebars-like engine
     md_path = Path("prp/active/PRP-004.md")
@@ -846,6 +1211,9 @@ def main() -> int:
         return text
 
     rendered_md = _render_vars(_render_each(raw_md_template, md_ctx), md_ctx)
+    # Clean up any stray closing tags that may remain after nested-each processing
+    import re as _re_cleanup
+    rendered_md = _re_cleanup.sub(r"^\s*{{/each}}\s*$", "", rendered_md, flags=_re_cleanup.MULTILINE)
 
     # Fallback: handle orphan "{{#each implementation_steps}}" without closing tag by expanding it inline
     orphan_tag = "{{#each implementation_steps}}"

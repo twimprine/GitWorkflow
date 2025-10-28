@@ -5,15 +5,12 @@
     "contracts/**",
     "schemas/**",
     "api/**",
-    "src/**",
-    "app/**",
-    "lib/**",
     "config/**",
     ".github/workflows/**",
     "migrations/**",
-    "scripts/**",
     "README.md",
-    "CLAUDE.md"
+    "CLAUDE.md",
+    "~/.claude/CLAUDE.md"
   ],
   "exclude": [
     "node_modules/**",

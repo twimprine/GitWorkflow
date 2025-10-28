@@ -174,7 +174,7 @@ def main() -> int:
             "custom_id": f"panel-{aid}",
             "params": {
                 "model": args.model,
-                "max_tokens": 2048,
+                "max_tokens": 20408,
                 "temperature": 0.9,
                 "system": [
                     {"type": "text", "text": system_text, "cache_control": {"type": "ephemeral", "ttl": "1h"}}

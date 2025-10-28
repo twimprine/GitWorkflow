@@ -131,7 +131,7 @@
   },
   "prompts": {
     "system": "prompts/system.md",
-    "max_tokens": 4096,
+    "max_tokens": 40096,
     "temperature": 0.5
   }
 }

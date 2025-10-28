@@ -155,7 +155,7 @@ def build_requests(spec: CommandSpec, runtime_args: Dict[str, str], model: str =
             "custom_id": f"{spec.command}-{step.id}",
             "params": {
                 "model": model,
-                "max_tokens": 2048,
+                "max_tokens": 20048,
                 "temperature": 0.9,
                 "system": [
                     {

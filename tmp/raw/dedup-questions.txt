@@ -2,115 +2,116 @@
 {
   "questions": [
     {
-      "question": "Are there additional security headers (CORS, CSP, X-Content-Type-Options, X-Frame-Options) required for HTTP responses?",
-      "agents": ["security-reviewer"],
-      "source_files": ["P-179-T-001.json", "P-177-T-001.json", "P-176-T-001.json", "P-150-T-001.json", "P-175-T-001.json"]
-    },
-    {
-      "question": "Are there additional security requirements beyond body size limit and Content-Type validation (e.g., rate limiting, request timeout)?",
-      "agents": ["security-reviewer"],
-      "source_files": ["P-148-T-001.json"]
-    },
-    {
-      "question": "Should rate limiting or connection throttling be implemented to prevent DoS attacks?",
-      "agents": ["security-reviewer"],
-      "source_files": ["P-182-T-001.json", "P-147-T-001.json", "P-153-T-001.json", "P-146-T-001.json", "P-174-T-001.json", "P-151-T-001.json", "P-181-T-001.json", "P-178-T-001.json"]
-    },
-    {
-      "question": "Are there specific HTTP response headers required (e.g., Content-Type, Server identification)?",
-      "agents": ["python-developer"],
-      "source_files": ["P-153-T-001.json"]
-    },
-    {
-      "question": "Are there specific JSON schema validation requirements beyond basic parsing?",
-      "agents": ["security-reviewer"],
-      "source_files": ["P-149-T-001.json"]
-    },
-    {
-      "question": "Are there specific logging requirements for requests, errors, and health checks?",
+      "question": "Are there existing ArgoCD application templates or conventions to follow for GitOps integration?",
       "agents": ["devops-engineer"],
-      "source_files": ["P-154-T-001.json", "P-147-T-001.json"]
+      "source_files": ["P-457-T-001-github-actions-expert.json"]
     },
     {
-      "question": "Are there specific logging requirements for requests/errors or should it be silent?",
-      "agents": ["nodejs-developer"],
-      "source_files": ["P-152-T-001.json"]
+      "question": "Are there existing NetworkPolicies or PodSecurityPolicies that must be compatible?",
+      "agents": ["kubernetes-specialist"],
+      "source_files": ["P-452-T-001-kubernetes-specialist.json", "P-441-T-001-project-manager.json", "P-442-T-001-security-reviewer.json", "P-449-T-001-docker-specialist.json"]
     },
     {
-      "question": "Is graceful shutdown handling required for the server process?",
-      "agents": ["application-architect"],
-      "source_files": ["P-149-T-001.json"]
+      "question": "Are there existing documentation standards or templates to follow?",
+      "agents": ["documentation-writer"],
+      "source_files": ["P-452-T-001-kubernetes-specialist.json"]
     },
     {
-      "question": "Is this server intended for production use or development/testing only?",
-      "agents": ["architect-reviewer", "application-architect"],
-      "source_files": ["P-179-T-001.json", "P-148-T-001.json"]
-    },
-    {
-      "question": "Should /echo validate JSON structure beyond parsing, or accept any valid JSON?",
-      "agents": ["nodejs-developer", "python-developer"],
-      "source_files": ["P-152-T-001.json", "P-180-T-001.json", "P-174-T-001.json", "P-182-T-001.json"]
-    },
-    {
-      "question": "Should both Python and Node.js implementations be delivered, or is one preferred?",
-      "agents": ["application-architect", "project-manager", "python-developer"],
-      "source_files": ["P-177-T-001.json", "P-148-T-001.json", "P-149-T-001.json", "P-176-T-001.json", "P-179-T-001.json", "P-181-T-001.json"]
-    },
-    {
-      "question": "Should integration tests include concurrent request handling and graceful shutdown/load testing scenarios?",
-      "agents": ["test-automation", "test-runner"],
-      "source_files": ["P-151-T-001.json", "P-179-T-001.json", "P-148-T-001.json", "P-149-T-001.json", "P-153-T-001.json", "P-177-T-001.json", "P-176-T-001.json", "P-147-T-001.json", "P-154-T-001.json", "P-150-T-001.json", "P-178-T-001.json", "P-174-T-001.json", "P-180-T-001.json"]
-    },
-    {
-      "question": "Should invalid JSON payloads return 400 Bad Request with error details or generic error message?",
-      "agents": ["python-developer"],
-      "source_files": ["P-151-T-001.json"]
-    },
-    {
-      "question": "Should the server handle graceful shutdown on SIGTERM/SIGINT signals?",
-      "agents": ["nodejs-developer", "python-developer", "application-architect"],
-      "source_files": ["P-180-T-001.json", "P-152-T-001.json", "P-182-T-001.json", "P-174-T-001.json", "P-154-T-001.json", "P-176-T-001.json", "P-146-T-001.json", "P-151-T-001.json", "P-153-T-001.json", "P-150-T-001.json", "P-147-T-001.json"]
-    },
-    {
-      "question": "Should the server log requests/errors to stdout/stderr, or remain completely silent?",
-      "agents": ["python-developer", "nodejs-developer", "devops-engineer"],
-      "source_files": ["P-178-T-001.json", "P-180-T-001.json", "P-175-T-001.json", "P-182-T-001.json"]
-    },
-    {
-      "question": "Should we add tests for malformed JSON, missing Content-Type header, and concurrent request handling?",
-      "agents": ["test-runner"],
-      "source_files": ["P-146-T-001.json", "P-175-T-001.json", "P-181-T-001.json"]
-    },
-    {
-      "question": "Should we enforce HTTPS-only in production or is HTTP acceptable for this healthcheck service?",
+      "question": "Are there existing organizational security policies or compliance requirements that must be enforced?",
       "agents": ["security-reviewer"],
-      "source_files": ["P-152-T-001.json"]
+      "source_files": ["P-455-T-001-performance-profiler.json"]
     },
     {
-      "question": "Should we implement request timeout limits to prevent slowloris attacks?",
+      "question": "Are there firewall rules or network ACLs that need coordination for LoadBalancer external access?",
+      "agents": ["network-specialist"],
+      "source_files": ["P-454-T-001-network-specialist.json"]
+    },
+    {
+      "question": "Are there namespace isolation requirements or should this deploy to a specific namespace?",
+      "agents": ["kubernetes-specialist"],
+      "source_files": ["P-458-T-001-performance-tester.json"]
+    },
+    {
+      "question": "Are there specific compliance requirements (PCI DSS, HIPAA, SOC2, ISO27001) that affect security controls, logging, or data handling?",
+      "agents": ["compliance-officer", "security-reviewer", "devsecops-specialist"],
+      "source_files": ["P-449-T-001-docker-specialist.json", "P-450-T-001-documentation-writer.json", "P-445-T-001-architect-reviewer.json", "P-457-T-001-github-actions-expert.json", "P-458-T-001-performance-tester.json", "P-452-T-001-kubernetes-specialist.json", "P-443-T-001-test-runner.json", "P-444-T-001-ux-designer.json", "P-454-T-001-network-specialist.json", "P-439-T-001-application-architect.json", "P-440-T-001-devops-engineer.json", "P-456-T-001-test-automation.json", "P-453-T-001-monitoring-specialist.json", "P-448-T-001-devsecops-specialist.json", "P-447-T-001-compliance-officer.json"]
+    },
+    {
+      "question": "Are there specific logging or monitoring requirements for production?",
+      "agents": ["compliance-officer"],
+      "source_files": ["P-442-T-001-security-reviewer.json"]
+    },
+    {
+      "question": "Are there specific network policies or ingress requirements beyond LoadBalancer service?",
+      "agents": ["network-specialist"],
+      "source_files": ["P-445-T-001-architect-reviewer.json"]
+    },
+    {
+      "question": "Are there specific security standards or compliance frameworks to follow?",
       "agents": ["security-reviewer"],
-      "source_files": ["P-154-T-001.json", "P-180-T-001.json"]
+      "source_files": ["P-451-T-001-golang-developer.json"]
     },
     {
-      "question": "What is the expected deployment environment and process management strategy (systemd, Docker, supervisor, PM2)?",
-      "agents": ["devops-engineer"],
-      "source_files": ["P-148-T-001.json", "P-149-T-001.json", "P-178-T-001.json", "P-153-T-001.json", "P-174-T-001.json", "P-181-T-001.json", "P-152-T-001.json", "P-176-T-001.json", "P-150-T-001.json", "P-177-T-001.json", "P-179-T-001.json"]
+      "question": "How many replicas should be deployed initially?",
+      "agents": ["kubernetes-specialist"],
+      "source_files": ["P-447-T-001-compliance-officer.json"]
     },
     {
-      "question": "What is the expected graceful shutdown behavior when receiving SIGTERM/SIGINT?",
-      "agents": ["devops-engineer"],
-      "source_files": ["P-175-T-001.json"]
+      "question": "Is Cilium the CNI plugin in use, and are NetworkPolicies currently enforced in the cluster?",
+      "agents": ["kubernetes-specialist"],
+      "source_files": ["P-440-T-001-devops-engineer.json"]
     },
     {
-      "question": "What logging level and format is required for production deployment (stdout/stderr, structured JSON logs)?",
-      "agents": ["devops-engineer"],
-      "source_files": ["P-151-T-001.json", "P-146-T-001.json"]
+      "question": "Is Prometheus Operator installed, or should we use standard Prometheus service discovery?",
+      "agents": ["monitoring-specialist"],
+      "source_files": ["P-440-T-001-devops-engineer.json"]
     },
     {
-      "question": "What should be the response format for /echo when Content-Type is missing or incorrect?",
-      "agents": ["python-developer"],
-      "source_files": ["P-154-T-001.json"]
-    }
-  ]
-}
-```
+      "question": "Is mutual TLS (mTLS) required for service-to-service communication within the cluster?",
+      "agents": ["security-reviewer"],
+      "source_files": ["P-453-T-001-monitoring-specialist.json"]
+    },
+    {
+      "question": "Is there an existing Prometheus instance to scrape metrics, or should ServiceMonitor CRD be included?",
+      "agents": ["monitoring-specialist"],
+      "source_files": ["P-447-T-001-compliance-officer.json", "P-439-T-001-application-architect.json", "P-443-T-001-test-runner.json", "P-454-T-001-network-specialist.json", "P-441-T-001-project-manager.json", "P-446-T-001-cicd-developer.json"]
+    },
+    {
+      "question": "Is there an existing Prometheus/Grafana stack deployed and what are the metric retention policies and labeling conventions?",
+      "agents": ["monitoring-specialist"],
+      "source_files": ["P-458-T-001-performance-tester.json", "P-455-T-001-performance-profiler.json", "P-452-T-001-kubernetes-specialist.json"]
+    },
+    {
+      "question": "Is there an existing logging/metrics/observability infrastructure to integrate with?",
+      "agents": ["monitoring-specialist"],
+      "source_files": ["P-451-T-001-golang-developer.json", "P-448-T-001-devsecops-specialist.json", "P-457-T-001-github-actions-expert.json", "P-456-T-001-test-automation.json", "P-445-T-001-architect-reviewer.json"]
+    },
+    {
+      "question": "Should the /echo endpoint support content types beyond application/json?",
+      "agents": ["golang-developer"],
+      "source_files": ["P-446-T-001-cicd-developer.json", "P-451-T-001-golang-developer.json", "P-444-T-001-ux-designer.json", "P-458-T-001-performance-tester.json", "P-448-T-001-devsecops-specialist.json", "P-440-T-001-devops-engineer.json", "P-452-T-001-kubernetes-specialist.json", "P-443-T-001-test-runner.json"]
+    },
+    {
+      "question": "Should the /echo endpoint validate JSON schema or accept any valid JSON?",
+      "agents": ["golang-developer"],
+      "source_files": ["P-442-T-001-security-reviewer.json", "P-447-T-001-compliance-officer.json"]
+    },
+    {
+      "question": "Should TLS termination occur at the LoadBalancer level or within the application/pod?",
+      "agents": ["security-reviewer"],
+      "source_files": ["P-447-T-001-compliance-officer.json", "P-449-T-001-docker-specialist.json", "P-450-T-001-documentation-writer.json"]
+    },
+    {
+      "question": "Should integration tests run against local server or require Kubernetes test environment?",
+      "agents": ["test-automation"],
+      "source_files": ["P-439-T-001-application-architect.json", "P-454-T-001-network-specialist.json"]
+    },
+    {
+      "question": "Should rate limiting be implemented at application or ingress level?",
+      "agents": ["security-reviewer"],
+      "source_files": ["P-442-T-001-security-reviewer.json"]
+    },
+    {
+      "question": "Should the /echo endpoint support additional HTTP methods (GET, PUT, DELETE) or remain POST-only?",
+      "agents": ["golang-developer"],
+      "source_files

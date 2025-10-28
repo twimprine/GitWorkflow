@@ -37,6 +37,7 @@ import os
 import re
 import glob
 import fnmatch
+import hashlib
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Set, Any
@@ -77,6 +78,14 @@ def _slugify(text: str) -> str:
     txt = _re.sub(r"\s+", "-", txt)
     txt = _re.sub(r"-+", "-", txt)
     return txt or "draft"
+
+
+def _fp8(s: str) -> str:
+    """Generate a stable 6-character hash from a string."""
+    try:
+        return hashlib.sha1(s.encode("utf-8")).hexdigest()[:6]
+    except Exception:
+        return "000000"
 
 
 class SpecError(Exception):
@@ -433,7 +442,7 @@ def main() -> int:
             feature = p_arg.read_text(encoding="utf-8", errors="replace").strip() or feature
     except Exception:
         pass
-    slug = _slugify(feature)
+    slug = _fp8(feature)
 
     # Determine target agents: prefer override, else timestamped recommendations, else P-based fallback
     registry = _list_registered_agents()
@@ -593,7 +602,7 @@ def main() -> int:
             elif isinstance(alt, (dict, list)):
                 obj = alt
         if not isinstance(obj, (dict, list)):
-            raw_out = f"tmp/raw/{slug}-reco-{batch_ts}.txt"
+            raw_out = f"tmp/raw/t003-{slug}-{batch_ts}.txt"
             Path(raw_out).parent.mkdir(parents=True, exist_ok=True)
             Path(raw_out).write_text(combined or "", encoding="utf-8")
             print(f"saved raw -> {raw_out}")
@@ -608,7 +617,7 @@ def main() -> int:
             elif _looks_like_task003_content(obj):
                 payload_dict = {"content": obj, "outputs": {}}
             else:
-                diag = f"tmp/raw/{slug}-reco-{batch_ts}-invalid.json"
+                diag = f"tmp/raw/t003-{slug}-{batch_ts}-invalid.json"
                 Path(diag).parent.mkdir(parents=True, exist_ok=True)
                 Path(diag).write_text(json.dumps(obj, indent=2), encoding="utf-8")
                 print(f"saved invalid -> {diag}")

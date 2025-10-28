@@ -235,8 +235,8 @@ def _collect_task001_data() -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]
     draft_dir = Path("prp/drafts")
     seen_paths: set[str] = set()
     drafts: List[Path] = []
-    # New naming
-    for p in sorted(draft_dir.glob("P-*-T-001.json"), key=lambda q: str(q)):
+    # New naming (supports both P-###-T-001.json and P-###-T-001-{agent}.json)
+    for p in sorted(draft_dir.glob("P-*-T-001*.json"), key=lambda q: str(q)):
         sp = str(p)
         if sp not in seen_paths:
             seen_paths.add(sp)
