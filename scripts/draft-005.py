@@ -1,17 +1,28 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 """
-draft-005.py — TASK005 PRP cleanup archiver (no AI)
+draft-005.py — TASK005 PRP Break Tasks into individual PRPs
 
 Actions:
-- Detect current PRP id from prp/active/PRP-*.json (metadata.prp_id: e.g., P-206-T-004)
-- Create a git branch (prefixed with PRP:) and commit an archive move of PRP artifacts
-- Push the branch; attempt to merge into main (or master) if possible
-- Archive layout: archive/{YYYYmmdd-HHMMSS}/P-###/{active,drafts}/
+- Read latest PRP-004.json from prp/active/
+- For each task in tasks[], create a new PRP-005 JSON file in prp/active/
+- Each PRP-005 gets a unique prp_id (P-###-T-###), sequentially numbered
+- Each PRP-005 references the parent PRP-004 in metadata.parent_prp_id
+- Build dependency graph in metadata.prp_dependencies
+- Use dependencies to set up step inputs/outputs appropriately
+- Schedule batches according to dependencies (no parallel steps if dependent)
+    - E.g., if Task 2 depends on Task 1, Task 2's PRP-005 should run after Task 1's completes
+    - Ouput of Task 1 becomes input to Task 2
+    - Batch requests should reflect this sequencing
+- Save each PRP-005 JSON to prp/active/PRP-005-T-###.json
 
-Notes:
-- No AI calls, only local file ops + git.
-- Safe fallbacks for branch names if ':' not accepted by remote.
+Rules:
+- If a task has no dependencies, it can be scheduled in parallel with other independent tasks
+- If a task depends on another, it must be scheduled after its dependencies complete
+- Each PRP-005 should be self-contained with its own inputs, outputs, and metadata
+- The script should handle errors gracefully and log progress output raw data to tmp/
+
+
 """
 
 import argparse

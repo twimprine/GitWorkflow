@@ -374,16 +374,71 @@ def _normalize_agent_id(name: str) -> str:
 
 
 def _extract_fenced_json(s: str):
-    """Return JSON parsed from a ```json fenced block, or the raw block on parse failure."""
+    """Return JSON parsed from a ```json fenced block, or handle truncated blocks.
+
+    Extracts the LARGEST valid JSON found in fenced blocks to avoid partial extractions.
+    Handles truncated responses where closing ``` may be missing.
+    """
     import re as _re
-    m = _re.search(r"```json\s*(.*?)```", s, _re.DOTALL | _re.IGNORECASE)
-    if not m:
+
+    # First try standard fenced blocks with closing fence
+    matches = list(_re.finditer(r"```json\s*(.*?)```", s, _re.DOTALL | _re.IGNORECASE))
+    print(f"DEBUG [_extract_fenced_json]: Found {len(matches)} complete fenced JSON blocks")
+
+    # If no complete blocks found, check for truncated block (opening fence but no closing)
+    if not matches and s.startswith('```json'):
+        print(f"DEBUG [_extract_fenced_json]: Detected truncated fenced block (no closing fence)")
+        # Extract everything after ```json
+        truncated_match = _re.match(r"```json\s*(.*)", s, _re.DOTALL | _re.IGNORECASE)
+        if truncated_match:
+            truncated_content = truncated_match.group(1).strip()
+            print(f"DEBUG [_extract_fenced_json]: Attempting to parse truncated content (length: {len(truncated_content)})")
+            # Try to parse the truncated JSON - it might still be valid if just the fence is missing
+            try:
+                obj = json.loads(truncated_content)
+                print(f"DEBUG [_extract_fenced_json]: Successfully parsed truncated JSON!")
+                return obj
+            except json.JSONDecodeError as e:
+                print(f"DEBUG [_extract_fenced_json]: Truncated JSON is incomplete: {e}")
+                # Try to repair by finding the last complete JSON structure
+                # This is a fallback - the JSON is likely incomplete
+                return None
+
+    if not matches:
         return None
-    block = m.group(1).strip()
-    try:
-        return json.loads(block)
-    except Exception:
-        return block
+
+    # Try each block and return the largest valid JSON object
+    best_obj = None
+    best_size = 0
+
+    for idx, m in enumerate(matches):
+        block = m.group(1).strip()
+        print(f"DEBUG [_extract_fenced_json]: Block {idx} length: {len(block)} chars")
+        print(f"DEBUG [_extract_fenced_json]: Block {idx} preview: {block[:100]}...")
+        try:
+            obj = json.loads(block)
+            print(f"DEBUG [_extract_fenced_json]: Block {idx} parsed successfully, type: {type(obj)}")
+            # Prefer objects with both 'outputs' and 'content' fields
+            if isinstance(obj, dict):
+                print(f"DEBUG [_extract_fenced_json]: Block {idx} keys: {list(obj.keys())}")
+                if 'outputs' in obj and 'content' in obj:
+                    # This is the ideal format, return immediately
+                    print(f"DEBUG [_extract_fenced_json]: Block {idx} has both outputs and content - RETURNING THIS")
+                    return obj
+                # Otherwise keep the largest JSON object
+                size = len(json.dumps(obj))
+                print(f"DEBUG [_extract_fenced_json]: Block {idx} size: {size} bytes")
+                if size > best_size:
+                    best_obj = obj
+                    best_size = size
+                    print(f"DEBUG [_extract_fenced_json]: Block {idx} is now best candidate")
+        except Exception as e:
+            print(f"DEBUG [_extract_fenced_json]: Block {idx} failed to parse: {e}")
+            continue
+
+    if best_obj:
+        print(f"DEBUG [_extract_fenced_json]: Returning best object with size {best_size}")
+    return best_obj if best_obj is not None else block if matches else None
 
 
 def _looks_like_task003_content(obj: Any) -> bool:
@@ -405,7 +460,7 @@ def main() -> int:
     ap.add_argument("--arg", dest="feature_description", required=False, default="prp/idea.md")
     ap.add_argument("--timestamp")
     ap.add_argument("--iterations", type=int, default=1)
-    ap.add_argument("--max-tokens", type=int, default=8192)
+    ap.add_argument("--max-tokens", type=int, default=64000)  # Claude Sonnet max limit
     ap.add_argument("--model", default=MODEL_ID)
     ap.add_argument("--template", default="templates/prp/draft-prp-003.json", help="Template for TASK003 drafts submitted to recommended agents")
     ap.add_argument("--prompt", default="prompts/prp/draft-prp-003.md", help="Optional prompt file to include verbatim in the user instruction for TASK003")
@@ -561,46 +616,128 @@ def main() -> int:
         return None
 
     def _extract_text_blocks_from_result(x) -> List[str]:
+        print(f"\n  [_extract_text_blocks] Input type: {type(x)}")
+
         if isinstance(x, str):
+            print("  [_extract_text_blocks] Processing as string")
             try:
                 obj = json.loads(x)
-            except Exception:
+                print(f"  [_extract_text_blocks] Parsed JSON, keys: {obj.keys() if isinstance(obj, dict) else 'N/A'}")
+            except Exception as e:
+                print(f"  [_extract_text_blocks] JSON parse failed: {e}, returning raw string")
                 return [x]
             result = obj.get("result") if isinstance(obj, dict) else None
+            print(f"  [_extract_text_blocks] result type: {type(result)}, value: {result}")
             message = (result or {}).get("message") if isinstance(result, dict) else None
+            print(f"  [_extract_text_blocks] message type: {type(message)}")
             content = (message or {}).get("content", []) if isinstance(message, dict) else []
+            print(f"  [_extract_text_blocks] content type: {type(content)}, length: {len(content) if isinstance(content, list) else 'N/A'}")
             blocks: List[str] = []
             for c in content:
                 if isinstance(c, dict) and c.get("type") == "text":
                     blocks.append(c.get("text", ""))
+            print(f"  [_extract_text_blocks] Extracted {len(blocks)} blocks from string path")
             return blocks
+
+        # Object path
+        print("  [_extract_text_blocks] Processing as object")
         try:
             result = getattr(x, "result", None)
+            print(f"  [_extract_text_blocks] result from getattr: {type(result)}")
+            if result:
+                print(f"  [_extract_text_blocks] result attributes: {dir(result)}")
+                print(f"  [_extract_text_blocks] result type attr: {getattr(result, 'type', 'N/A')}")
+
             message = getattr(result, "message", None)
+            print(f"  [_extract_text_blocks] message from getattr: {type(message)}")
+            if message:
+                print(f"  [_extract_text_blocks] message attributes: {dir(message)}")
+
             content = getattr(message, "content", [])
+            print(f"  [_extract_text_blocks] content from getattr: {type(content)}, length: {len(content) if hasattr(content, '__len__') else 'N/A'}")
+
             blocks: List[str] = []
-            for c in content:
+            for idx, c in enumerate(content):
+                print(f"  [_extract_text_blocks] content[{idx}] type: {type(c)}")
+                if hasattr(c, "type"):
+                    print(f"  [_extract_text_blocks] content[{idx}] has type attr: {getattr(c, 'type')}")
                 if hasattr(c, "type") and getattr(c, "type") == "text":
-                    blocks.append(getattr(c, "text", ""))
+                    text = getattr(c, "text", "")
+                    print(f"  [_extract_text_blocks] Extracted text from object, length: {len(text)}")
+                    blocks.append(text)
                 elif isinstance(c, dict) and c.get("type") == "text":
-                    blocks.append(c.get("text", ""))
+                    text = c.get("text", "")
+                    print(f"  [_extract_text_blocks] Extracted text from dict, length: {len(text)}")
+                    blocks.append(text)
+            print(f"  [_extract_text_blocks] Extracted {len(blocks)} blocks from object path")
             return blocks
-        except Exception:
+        except Exception as e:
+            print(f"  [_extract_text_blocks] Exception in object path: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
             return []
 
     for it in items:
+        # DEBUG: Log raw item structure
+        print("\n" + "="*80)
+        print("DEBUG: Processing batch result item")
+        print("="*80)
+        print(f"DEBUG: Item type: {type(it)}")
+        print(f"DEBUG: Item attributes: {dir(it) if hasattr(it, '__dict__') else 'N/A'}")
+        if hasattr(it, '__dict__'):
+            print(f"DEBUG: Item __dict__: {it.__dict__}")
+
+        # Try to extract custom_id early for context
+        try:
+            cid = getattr(it, "custom_id", None)
+            print(f"DEBUG: custom_id: {cid}")
+        except Exception as e:
+            print(f"DEBUG: Error getting custom_id: {e}")
+
         blocks = _extract_text_blocks_from_result(it)
+
+        # DEBUG: Log extracted blocks
+        print(f"\nDEBUG: Extracted {len(blocks)} text blocks")
+        for idx, block in enumerate(blocks):
+            print(f"DEBUG: Block {idx} length: {len(block)}")
+            print(f"DEBUG: Block {idx} preview (first 200 chars):")
+            print(block[:200] if len(block) > 200 else block)
+            print("-" * 40)
+
         combined = "\n\n".join(blocks)
-        obj: Any = _first_json(combined) if isinstance(combined, str) else None
+        print(f"\nDEBUG: Combined text length: {len(combined)}")
+        print(f"DEBUG: Combined text preview (first 500 chars):")
+        print(combined[:500] if len(combined) > 500 else combined)
+        print("-" * 40)
+
+        # DEBUG: Save raw combined text for analysis
+        raw_debug = f"tmp/raw/debug-combined-{slug}-{batch_ts}.txt"
+        Path(raw_debug).parent.mkdir(parents=True, exist_ok=True)
+        Path(raw_debug).write_text(combined or "", encoding="utf-8")
+        print(f"DEBUG: Saved raw combined text to {raw_debug}")
+
+        # Try to extract from fenced block FIRST (more reliable)
+        print(f"DEBUG: About to call _extract_fenced_json, combined type: {type(combined)}, length: {len(combined) if combined else 0}")
+        obj: Any = _extract_fenced_json(combined) if isinstance(combined, str) else None
+
+        # If fenced extraction returned a string, try to parse it
+        if isinstance(obj, str):
+            try:
+                obj = json.loads(obj)
+            except Exception:
+                obj = None
+
+        # If fenced extraction failed, try _first_json as fallback
         if obj is None:
-            alt = _extract_fenced_json(combined)
-            if isinstance(alt, str):
-                try:
-                    obj = json.loads(alt)
-                except Exception:
-                    obj = None
-            elif isinstance(alt, (dict, list)):
-                obj = alt
+            obj = _first_json(combined) if isinstance(combined, str) else None
+
+        # DEBUG: Log parsed JSON object
+        print(f"\nDEBUG: Parsed JSON object type: {type(obj)}")
+        if obj:
+            print(f"DEBUG: Parsed JSON keys: {obj.keys() if isinstance(obj, dict) else 'N/A'}")
+            print(f"DEBUG: Parsed JSON (pretty):")
+            print(json.dumps(obj, indent=2)[:1000])  # First 1000 chars
+        print("="*80 + "\n")
         if not isinstance(obj, (dict, list)):
             raw_out = f"tmp/raw/t003-{slug}-{batch_ts}.txt"
             Path(raw_out).parent.mkdir(parents=True, exist_ok=True)
@@ -616,6 +753,23 @@ def main() -> int:
                 payload_dict = {"content": content, "outputs": obj.get("outputs") if isinstance(obj.get("outputs"), dict) else {}}
             elif _looks_like_task003_content(obj):
                 payload_dict = {"content": obj, "outputs": {}}
+            elif "draft_file" in obj and not "content" in obj and not "outputs" in obj:
+                # Handle case where API returns just {"draft_file": "..."} without proper wrapper
+                # This means Claude returned a minimal response, treat the whole object as outputs
+                print(f"WARN: API returned response without 'content' field; treating as outputs-only")
+                # Create a minimal valid task content structure
+                payload_dict = {
+                    "content": {
+                        "task": "P-XXX-T-003",
+                        "atomicity": {"is_atomic": True, "depends_on": []},
+                        "delegated_to": "pending",
+                        "objective": "Task details pending from API",
+                        "affected_components": [],
+                        "success_criteria": ["API response received"],
+                        "validation_tests": []
+                    },
+                    "outputs": obj  # Use the entire object as outputs
+                }
             else:
                 diag = f"tmp/raw/t003-{slug}-{batch_ts}-invalid.json"
                 Path(diag).parent.mkdir(parents=True, exist_ok=True)

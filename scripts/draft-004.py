@@ -587,7 +587,7 @@ def main() -> int:
     ap.add_argument("--consolidated-json", dest="consolidated_json", default=None, help="Inline JSON string for consolidated tasks (overrides --consolidated-path if provided)")
     ap.add_argument("--timestamp")
     ap.add_argument("--model", default=MODEL_ID)
-    ap.add_argument("--max-tokens", type=int, default=8192)
+    ap.add_argument("--max-tokens", type=int, default=64000)
     ap.add_argument("--validate-schema", action="store_true", help="Validate content against the JSON Schema before writing active outputs")
     ap.add_argument("--limit-drafts", type=int, default=0)
     ap.add_argument("--repair-attempts", type=int, default=1)
