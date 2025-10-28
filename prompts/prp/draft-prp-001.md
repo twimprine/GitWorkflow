@@ -4,6 +4,8 @@ argument-hint: [feature description]
 description: Create an initial task list for agent concensus review
 ---
 
+**IMPORTANT**: This is a DRAFT PRP process that calls multiple agents at once you are SPECIFICALLY being called for YOUR valued perspective input. If this should be delegated to another agent, please specify which one in the <delegation_suggestions> field of your response. That agent will be called next cycle if they haven't already been called.
+
 Create a rough draft PRP for initial review: $ARGUMENTS
 
 **Purpose**: Quick requirements capture for "$ARGUMENTS"

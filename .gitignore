@@ -35,3 +35,5 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+prp/drafts/*

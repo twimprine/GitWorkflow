@@ -338,14 +338,10 @@ def main() -> int:
     Returns non-zero on configuration or API errors; 0 on success.
     """
     ap = argparse.ArgumentParser()
-    ap.add_argument("--md", default="tmp/draft.md", help="Markdown file with prp-steps")
+    ap.add_argument("--md", default="prompts/prp/draft-prp-002.md", help="Markdown file with prp-steps")
     ap.add_argument("--arg", dest="feature_description", required=True)
     ap.add_argument("--model", default=MODEL_ID)
     ap.add_argument("--max-tokens", type=int, default=8192)
-    ap.add_argument("--step", default="create_draft")
-    ap.add_argument("--steps", nargs="+")
-    ap.add_argument("--all-steps", action="store_true")
-    ap.add_argument("--draft-ext", choices=["md", "mdx", "json", "preserve"], default="json")
     ap.add_argument("--template", default="templates/prp/draft-prp-002.json", help="Template for TASK002 output; enforced for generate_from_template")
     ap.add_argument("--prompt", default="prompts/prp/draft-prp-002.md", help="Optional prompt file to include verbatim in the user instruction for TASK002")
     args = ap.parse_args()

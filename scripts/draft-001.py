@@ -28,6 +28,9 @@ import argparse
 import json
 import os
 import time
+import hashlib
+import fnmatch
+import glob
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any
@@ -80,10 +83,120 @@ def _slugify(text: str) -> str:
     return txt or "draft"
 
 
+def _fp8(s: str) -> str:
+    try:
+        return hashlib.sha1(s.encode("utf-8")).hexdigest()[:8]
+    except Exception:
+        return "00000000"
+
+
+def _shorten_with_hash(s: str, max_len: int = 80) -> str:
+    """Shorten string to max_len with a stable 8-char hash suffix to preserve uniqueness."""
+    if max_len <= 12:
+        return s[:max(1, max_len)]
+    if len(s) <= max_len:
+        return s
+    suffix = _fp8(s)
+    base = s[: max_len - 1 - len(suffix)].rstrip("-")
+    return f"{base}-{suffix}"
+
+
 def _ensure_parent_dir(path_str: str) -> None:
     """Ensure parent directory of the path exists."""
     p = Path(path_str)
     p.parent.mkdir(parents=True, exist_ok=True)
+
+
+def _load_repo_context_from_schema(
+    schema_path: Path,
+    workspace_root: Path,
+    *,
+    max_files: int | None = None,
+) -> tuple[str, str] | None:
+    """Build a deterministic repo context JSON with FULL FILE CONTENTS per schema.
+
+    Returns (context_json, ttl_str) or None if schema missing/invalid.
+    The JSON shape is { "repo_context": [{"path": str, "size": int, "content": str}], "schema_source": str }.
+    All files matching schema include/exclude/extensions are included, sorted by path, and truncated ONLY by schema.maxFileKB.
+    If max_files is provided and > 0, at most that many files are included (in sorted order). If None or <=0, include all.
+    """
+    try:
+        if not schema_path.exists():
+            return None
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+    include: list[str] = schema.get("include", []) or []
+    exclude: list[str] = schema.get("exclude", []) or []
+    extensions: list[str] = schema.get("extensions", []) or []
+    max_kb: int = int(schema.get("maxFileKB", 256) or 256)
+    follow_symlinks: bool = bool(schema.get("followSymlinks", False))
+    ttl_hours: int = int(schema.get("cacheTTLHours", 24) or 24)
+
+    # Collect candidate files via include globs
+    candidates: set[Path] = set()
+    for pat in include:
+        # Patterns are relative to workspace root
+        abs_pat = str(workspace_root / pat)
+        for m in glob.glob(abs_pat, recursive=True):
+            p = Path(m)
+            if p.is_dir():
+                continue
+            if not follow_symlinks and p.is_symlink():
+                continue
+            candidates.add(p)
+
+    # Filter by exclude globs and extensions and size
+    def _is_excluded(p: Path) -> bool:
+        rel = str(p.relative_to(workspace_root)) if p.is_absolute() else str(p)
+        for pat in exclude:
+            if fnmatch.fnmatch(rel, pat):
+                return True
+        return False
+
+    allowed_ext = set(e.lower() for e in extensions if isinstance(e, str))
+    items: list[dict[str, Any]] = []  # per-file payloads
+    max_bytes = max(1, max_kb) * 1024
+
+    # Sort candidates deterministically by relative path
+    for p in sorted(candidates, key=lambda q: str(q)):
+        try:
+            rel = str(p.relative_to(workspace_root))
+        except Exception:
+            # If outside root, skip
+            continue
+        if _is_excluded(p):
+            continue
+        if allowed_ext:
+            if p.suffix.lower() not in allowed_ext:
+                continue
+        try:
+            sz = p.stat().st_size
+        except Exception:
+            continue
+        if sz > max_bytes:
+            # Skip files larger than schema limit
+            continue
+        try:
+            text = p.read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            # As a fallback, read bytes and decode
+            try:
+                text = p.read_bytes().decode("utf-8", errors="replace")
+            except Exception:
+                continue
+        items.append({"path": rel, "size": sz, "content": text})
+        if isinstance(max_files, int) and max_files > 0 and len(items) >= max_files:
+            break
+
+    payload = {
+        "repo_context": items,
+        "schema_source": str(schema_path.relative_to(workspace_root)) if schema_path.is_relative_to(workspace_root) else str(schema_path),
+    }
+    context_json = json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False)
+    ttl = f"{max(1, ttl_hours)}h"
+    return context_json, ttl
 
 
 def _extract_suggested_agents(payload: dict) -> set[str]:
@@ -356,6 +469,14 @@ def _parse_args() -> argparse.Namespace:
     ap.add_argument("--include-agent-catalog", dest="include_agent_catalog", action="store_true", default=True, help="Include a JSON catalog of available agents (first N lines) in the system context (default: on)")
     ap.add_argument("--no-include-agent-catalog", dest="include_agent_catalog", action="store_false", help="Disable inclusion of the agent catalog in the system context")
     ap.add_argument("--agent-catalog-lines", type=int, default=7, help="Number of lines from each agent file to include in the catalog (default: 7)")
+    # Force responder perspective in content.agent
+    ap.add_argument("--force-content-agent-self", dest="force_content_agent_self", action="store_true", default=True, help="Set content.agent to the responder's id (default: on)")
+    ap.add_argument("--no-force-content-agent-self", dest="force_content_agent_self", action="store_false", help="Allow content.agent to differ from responder (model choice)")
+    # Repo context via docs/schema.json
+    ap.add_argument("--include-repo-context", dest="include_repo_context", action="store_true", default=True, help="Include deterministic repo context from docs/schema.json in system context (default: on)")
+    ap.add_argument("--no-include-repo-context", dest="include_repo_context", action="store_false", help="Disable inclusion of repo context in the system context")
+    ap.add_argument("--context-schema", default="docs/schema.json", help="Path to schema.json defining include/exclude/extensions for repo context")
+    ap.add_argument("--context-max-files", type=int, default=0, help="If >0, cap the number of files included from the schema; 0 means include all (default: 0)")
     # Testing utilities
     ap.add_argument("--dry-run-suggestions", action="store_true", help="Scan existing prp/drafts for delegation_suggestions and print a resolved/unknown summary without calling the API")
     ap.add_argument("--timestamp", help="Optional timestamp (YYYYMMDD-HHMMSS) to select drafts when using --dry-run-suggestions; if omitted, latest for slug is used")
@@ -389,7 +510,7 @@ def _build_requests(agent_ids: list[str], model: str, user_text: str, system_ext
                 extras.append({
                     "type": "text",
                     "text": txt,
-                    "cache_control": {"type": "ephemeral", "ttl": "1h"},
+                    "cache_control": {"type": "ephemeral"},
                 })
     for aid in sorted(agent_ids):
         try:
@@ -398,7 +519,7 @@ def _build_requests(agent_ids: list[str], model: str, user_text: str, system_ext
             print(f"WARN: skipping unknown agent '{aid}': {e}")
             continue
         system_blocks = [
-            {"type": "text", "text": system_text, "cache_control": {"type": "ephemeral", "ttl": "1h"}}
+            {"type": "text", "text": system_text, "cache_control": {"type": "ephemeral"}}
         ] + extras
         reqs.append(
             {
@@ -431,10 +552,12 @@ def _run_batch(client: Any, requests: list[dict[str, Any]], label: str = "batch"
     return items
 
 
-def _process_batch_results(items: list[Any], slug: str, out_dir: Path) -> tuple[set[str], set[str]]:
+def _process_batch_results(items: list[Any], slug: str, out_dir: Path, *, force_content_agent_self: bool = True) -> tuple[set[str], set[str]]:
     """Save results; return (suggested_agents, seen_agents)."""
     suggested: set[str] = set()
     seen_agents: set[str] = set()
+    # Use a single timestamp for all files in this batch for consistent naming
+    batch_ts = datetime.now().strftime("%Y%m%d-%H%M%S")
 
     for item in items:
         blocks = _extract_text_blocks_from_result(item)
@@ -468,24 +591,24 @@ def _process_batch_results(items: list[Any], slug: str, out_dir: Path) -> tuple[
 
         outs = data.get("outputs") if isinstance(data.get("outputs"), dict) else None
         content = data.get("content") if isinstance(data.get("content"), dict) else None
+        # Enforce responder perspective if requested
+        if force_content_agent_self and isinstance(content, dict):
+            try:
+                ca = content.get("agent")
+                if isinstance(ca, str) and ca.strip() != agent_tag:
+                    content["agent"] = agent_tag
+            except Exception:
+                pass
         if outs and isinstance(outs.get("draft_file"), str) and content:
-            suggested_path = outs.get("draft_file")
-            batch_ts = datetime.now().strftime("%Y%m%d-%H%M%S")
-            dest = (
-                suggested_path.replace("{slug}", slug)
-                .replace("{timestamp}", batch_ts)
-                .replace("{variant}", "a")
-                .replace("{prp_id}", "000")
-            )
-            base = Path(str(dest)).name or f"{slug}-task001.json"
-            stem = base[:-5] if base.lower().endswith(".json") else base
-            if batch_ts not in stem:
-                stem = f"{stem}-{batch_ts}"
-            if "task001" not in stem:
-                stem = f"{stem}-task001"
-            safe_agent = _slugify(agent_tag)
-            if safe_agent and safe_agent not in stem:
-                stem = f"{stem}-{safe_agent}"
+            # Standardized filename scheme (ignore model-suggested name):
+            # prp/drafts/{slug}-{batch_ts}-task001-{content_agent}[-by-{responder}].json
+            responder = _slugify(agent_tag)
+            content_agent = _slugify(str(content.get("agent") or responder))
+            parts = [slug, batch_ts, "task001", content_agent]
+            if content_agent != responder:
+                parts.append(f"by-{responder}")
+            stem = "-".join([p for p in parts if p])
+            stem = _shorten_with_hash(_slugify(stem), max_len=120)
             final = Path("prp/drafts") / f"{stem}.json"
             final.parent.mkdir(parents=True, exist_ok=True)
             Path(final).write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -548,7 +671,9 @@ def _run_suggested_passes(
             print("No valid suggested agents to query in this pass.")
             break
         items = _run_batch(client, reqs, label=f"follow_batch_{pass_num}")
-        newly_suggested, newly_seen = _process_batch_results(items, slug, out_dir)
+        newly_suggested, newly_seen = _process_batch_results(
+            items, slug, out_dir, force_content_agent_self=True
+        )
         already_run |= newly_seen
         # Resolve new suggestions, accumulate unknowns, then filter by not already run
         new_resolved = _resolve(newly_suggested)
@@ -578,7 +703,7 @@ def main() -> int:
 
     agents = [a.strip() for a in args.agents.split(",") if a.strip()]
     feature = _load_feature_text(args.feature_description)
-    slug = _slugify(feature)
+    slug = _shorten_with_hash(_slugify(feature), max_len=80)
 
     # Test-first: optional dry-run mode to scan and resolve suggestions without hitting the API
     if args.dry_run_suggestions:
@@ -618,6 +743,21 @@ def main() -> int:
         system_extras.append("KNOWN AGENTS CATALOG (JSON):\n" + catalog_json)
         # Add a concise reference note to the user instruction
         user_text += "\n\nIMPORTANT: A KNOWN AGENTS CATALOG is provided in system context. Choose suggestions ONLY from available_agents[].id"
+
+    # Optionally add a deterministic repo context index from docs/schema.json
+    if args.include_repo_context:
+        schema_path = Path(args.context_schema)
+        max_files = int(args.context_max_files)
+        ctx = _load_repo_context_from_schema(
+            schema_path=schema_path,
+            workspace_root=Path.cwd(),
+            max_files=(max_files if max_files > 0 else None),
+        )
+        if ctx:
+            context_json, ttl = ctx
+            # Serialize as a distinct system extra with its own TTL note inline
+            system_extras.append("REPO CONTEXT INDEX (JSON):\n" + context_json)
+            user_text += "\n\nIMPORTANT: A REPO CONTEXT INDEX is provided in system context. Prefer local sources; do not hallucinate missing files."
     requests = _build_requests(agents, args.model, user_text, system_extras=system_extras)
     if not requests:
         print("No valid agents to query.")
@@ -628,7 +768,7 @@ def main() -> int:
     out_dir = Path(f"tmp/panel/{slug}")
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    suggested, seen_agents = _process_batch_results(results, slug, out_dir)
+    suggested, seen_agents = _process_batch_results(results, slug, out_dir, force_content_agent_self=bool(args.force_content_agent_self))
 
     if suggested:
         _run_suggested_passes(
@@ -643,6 +783,7 @@ def main() -> int:
             out_dir=out_dir,
             model=args.model,
             max_passes=max(0, int(args.max_passes)),
+            system_extras=system_extras,
         )
     return 0
 
