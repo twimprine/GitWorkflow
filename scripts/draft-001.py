@@ -107,6 +107,39 @@ def _ensure_parent_dir(path_str: str) -> None:
     p.parent.mkdir(parents=True, exist_ok=True)
 
 
+# --- PRP Sequence Register (P and Q counters) ---
+def _seq_path() -> Path:
+    return Path("prp/prp_seq.json")
+
+
+def _read_seq() -> dict:
+    p = _seq_path()
+    if not p.exists():
+        p.parent.mkdir(parents=True, exist_ok=True)
+        data = {"P": 0, "Q": {"002": 0}}
+        p.write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
+        return data
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return {"P": 0, "Q": {"002": 0}}
+
+
+def _write_seq(data: dict) -> None:
+    p = _seq_path()
+    tmp = p.with_suffix(".tmp")
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp.write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
+    tmp.replace(p)
+
+
+def _next_P() -> int:
+    data = _read_seq()
+    data["P"] = int(data.get("P", 0)) + 1
+    _write_seq(data)
+    return data["P"]
+
+
 def _load_repo_context_from_schema(
     schema_path: Path,
     workspace_root: Path,
@@ -600,16 +633,10 @@ def _process_batch_results(items: list[Any], slug: str, out_dir: Path, *, force_
             except Exception:
                 pass
         if outs and isinstance(outs.get("draft_file"), str) and content:
-            # Standardized filename scheme (ignore model-suggested name):
-            # prp/drafts/{slug}-{batch_ts}-task001-{content_agent}[-by-{responder}].json
-            responder = _slugify(agent_tag)
-            content_agent = _slugify(str(content.get("agent") or responder))
-            parts = [slug, batch_ts, "task001", content_agent]
-            if content_agent != responder:
-                parts.append(f"by-{responder}")
-            stem = "-".join([p for p in parts if p])
-            stem = _shorten_with_hash(_slugify(stem), max_len=120)
-            final = Path("prp/drafts") / f"{stem}.json"
+            # Standardized compact filename scheme using PRP sequence with order P-T
+            # New convention: P-###-T-001.json (P first, then Task id)
+            P = _next_P()
+            final = Path("prp/drafts") / f"P-{P:03d}-T-001.json"
             final.parent.mkdir(parents=True, exist_ok=True)
             Path(final).write_text(json.dumps(data, indent=2), encoding="utf-8")
             print(f"saved -> {final}")
