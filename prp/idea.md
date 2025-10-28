@@ -1,12 +1,5 @@
-# Feature
-
-## Description
-HTML5 index.html for a 'Hello World!' test web page.
-
-## Features
-- Blue Background
-- Centered White Text
-- Responsive Design
-- Simple and Clean Layout
-- Accessibility Compliant
-- No External Dependencies or persistence
+# Healthcheck Echo Server
+name: echo-http
+description: Minimal HTTP server with /healthz (200 OK) and /echo (POST JSON → same JSON).
+implement best practices and security for a production-grade microservice. deploy to kubernetes cluster via argo cd pipeline. 
+integration with argo outside scope of this prp.

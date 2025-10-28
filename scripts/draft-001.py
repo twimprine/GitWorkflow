@@ -543,7 +543,7 @@ def _build_requests(agent_ids: list[str], model: str, user_text: str, system_ext
                 extras.append({
                     "type": "text",
                     "text": txt,
-                    "cache_control": {"type": "ephemeral"},
+                    "cache_control": {"type": "ephemeral", "ttl": "1h"},
                 })
     for aid in sorted(agent_ids):
         try:
@@ -552,7 +552,7 @@ def _build_requests(agent_ids: list[str], model: str, user_text: str, system_ext
             print(f"WARN: skipping unknown agent '{aid}': {e}")
             continue
         system_blocks = [
-            {"type": "text", "text": system_text, "cache_control": {"type": "ephemeral"}}
+            {"type": "text", "text": system_text, "cache_control": {"type": "ephemeral", "ttl": "1h"}}
         ] + extras
         reqs.append(
             {

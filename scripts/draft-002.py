@@ -733,7 +733,7 @@ def main() -> int:
         except FileNotFoundError as e:
             print(f"ERROR: {e}")
             return 2
-        system_extras.append({"type": "text", "text": architect_text, "cache_control": {"type": "ephemeral"}})
+        system_extras.append({"type": "text", "text": architect_text, "cache_control": {"type": "ephemeral", "ttl": "1h"}})
 
         # Optional agent catalog (deterministic)
         if args.include_agent_catalog:
@@ -750,7 +750,7 @@ def main() -> int:
                     continue
             catalog = sorted(catalog, key=lambda x: x["id"]) 
             catalog_json = json.dumps({"available_agents": catalog}, indent=2, sort_keys=True, ensure_ascii=False)
-            system_extras.append({"type": "text", "text": "KNOWN AGENTS CATALOG (JSON):\n" + catalog_json, "cache_control": {"type": "ephemeral"}})
+            system_extras.append({"type": "text", "text": "KNOWN AGENTS CATALOG (JSON):\n" + catalog_json, "cache_control": {"type": "ephemeral", "ttl": "1h"}})
 
         # Repo context
         if args.include_repo_context:
@@ -761,7 +761,7 @@ def main() -> int:
             )
             if ctx:
                 context_json, _ttl = ctx
-                system_extras.append({"type": "text", "text": "REPO CONTEXT INDEX (JSON):\n" + context_json, "cache_control": {"type": "ephemeral"}})
+                system_extras.append({"type": "text", "text": "REPO CONTEXT INDEX (JSON):\n" + context_json, "cache_control": {"type": "ephemeral", "ttl": "1h"}})
 
         # Aggregate TASK001 responses and questions
         responses, questions = _collect_task001_data()
@@ -827,7 +827,7 @@ def main() -> int:
         questions = [{"question": e.get("question"), "agent": ",".join(e.get("agents", [])), "source_file": ",".join(e.get("source_files", []))} for e in dedup_list]
         print(f"Questions after dedup: {len(questions)}")
         prp_json = json.dumps({"task001_responses": responses}, indent=2, sort_keys=True, ensure_ascii=False)
-        system_extras.append({"type": "text", "text": "TASK001 RESPONSES (JSON):\n" + prp_json, "cache_control": {"type": "ephemeral"}})
+        system_extras.append({"type": "text", "text": "TASK001 RESPONSES (JSON):\n" + prp_json, "cache_control": {"type": "ephemeral", "ttl": "1h"}})
 
         # Build requests, one per question, with identical system blocks across all
         tpl_path = args.template
@@ -982,7 +982,7 @@ def main() -> int:
                 "max_tokens": int(args.max_tokens),
                 "temperature": 0.2,
                 "system": [
-                    {"type": "text", "text": agent_text, "cache_control": {"type": "ephemeral"}}
+                    {"type": "text", "text": agent_text, "cache_control": {"type": "ephemeral", "ttl": "1h"}}
                 ],
                 "messages": [
                     {"role": "user", "content": [{"type": "text", "text": user_text}]}

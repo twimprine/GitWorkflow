@@ -2,128 +2,115 @@
 {
   "questions": [
     {
-      "question": "Are there specific browser version requirements for compatibility testing?",
-      "agents": ["web-developer", "test-runner"],
-      "source_files": [
-        "html5-hello-world-20251027-191117-task001-test-automation.json",
-        "-feature-description-html5-indexhtml-for-a-hello-world-test-web-page-fe-369c171f-20251027-191016-task001-applic-91f65290.json",
-        "-feature-description-html5-indexhtml-for-a-hello-world-test-web-page-fe-369c171f-20251027-191016-task001-devops-engineer.json",
-        "001-hello-world-html-page-20251027-191016-task001-test-runner.json",
-        "001-hello-world-html-page-20251027-191117-task001-documentation-writer.json"
-      ]
-    },
-    {
-      "question": "Should the blue background use a specific shade or hex color code, or is any blue acceptable?",
-      "agents": ["ux-designer", "web-developer"],
-      "source_files": [
-        "-feature-description-html5-indexhtml-for-a-hello-world-test-web-page-fe-369c171f-20251027-191016-task001-ux-designer.json",
-        "001-hello-world-html-page-20251027-191016-task001-project-manager.json",
-        "001-hello-world-html-page-20251027-191016-task001-security-reviewer.json",
-        "001-hello-world-html-page-20251027-191117-task001-nodejs-developer.json",
-        "html5-hello-world-20251027-191117-task001-test-automation.json",
-        "hello-world-html5-page-20251027-191117-task001-web-developer.json",
-        "-feature-description-html5-indexhtml-for-a-hello-world-test-web-page-fe-369c171f-20251027-191016-task001-applic-91f65290.json",
-        "001-hello-world-html-page-20251027-191016-task001-test-runner.json"
-      ]
-    },
-    {
-      "question": "Should the CSS be inline, in a <style> tag, or in an external stylesheet?",
-      "agents": ["web-developer", "nodejs-developer"],
-      "source_files": [
-        "hello-world-html5-page-20251027-191117-task001-web-developer.json",
-        "001-hello-world-html-page-20251027-191016-task001-security-reviewer.json",
-        "001-hello-world-html-page-20251027-191117-task001-documentation-writer.json",
-        "001-hello-world-html-page-20251027-191016-task001-project-manager.json"
-      ]
-    },
-    {
-      "question": "Should automated accessibility testing be included in the test suite?",
-      "agents": ["test-runner", "test-automation"],
-      "source_files": [
-        "-feature-description-html5-indexhtml-for-a-hello-world-test-web-page-fe-369c171f-20251027-191016-task001-devops-engineer.json",
-        "-feature-description-html5-indexhtml-for-a-hello-world-test-web-page-fe-369c171f-20251027-191016-task001-ux-designer.json",
-        "hello-world-html5-page-20251027-191117-task001-web-developer.json",
-        "001-hello-world-html-page-20251027-191016-task001-test-runner.json",
-        "-feature-description-html5-indexhtml-for-a-hello-world-test-web-page-fe-369c171f-20251027-191016-task001-applic-91f65290.json"
-      ]
-    },
-    {
-      "question": "Does the white-on-blue color combination meet WCAG contrast requirements?",
-      "agents": ["ux-designer"],
-      "source_files": [
-        "001-hello-world-html-page-20251027-191117-task001-nodejs-developer.json",
-        "001-hello-world-html-page-20251027-191016-task001-project-manager.json",
-        "001-hello-world-html-page-20251027-191016-task001-security-reviewer.json",
-        "-feature-description-html5-indexhtml-for-a-hello-world-test-web-page-fe-369c171f-20251027-191016-task001-devops-engineer.json"
-      ]
-    },
-    {
-      "question": "Should the page include a <title> tag with specific content, or is a generic title acceptable?",
-      "agents": ["ux-designer", "web-developer"],
-      "source_files": [
-        "html5-hello-world-20251027-191117-task001-test-automation.json",
-        "001-hello-world-html-page-20251027-191117-task001-nodejs-developer.json"
-      ]
-    },
-    {
-      "question": "What testing framework should be used for HTML validation and accessibility checks?",
-      "agents": ["test-runner"],
-      "source_files": [
-        "001-hello-world-html-page-20251027-191016-task001-project-manager.json",
-        "001-hello-world-html-page-20251027-191016-task001-security-reviewer.json"
-      ]
-    },
-    {
-      "question": "Are there any Content Security Policy (CSP) requirements or security headers needed for this static page?",
+      "question": "Are there additional security headers (CORS, CSP, X-Content-Type-Options, X-Frame-Options) required for HTTP responses?",
       "agents": ["security-reviewer"],
-      "source_files": [
-        "001-hello-world-html-page-20251027-191016-task001-security-reviewer.json"
-      ]
+      "source_files": ["P-179-T-001.json", "P-177-T-001.json", "P-176-T-001.json", "P-150-T-001.json", "P-175-T-001.json"]
     },
     {
-      "question": "Does the 'Hello World!' text need any specific font family, size, or weight specifications?",
-      "agents": ["ux-designer"],
-      "source_files": [
-        "hello-world-html5-page-20251027-191117-task001-web-developer.json"
-      ]
+      "question": "Are there additional security requirements beyond body size limit and Content-Type validation (e.g., rate limiting, request timeout)?",
+      "agents": ["security-reviewer"],
+      "source_files": ["P-148-T-001.json"]
     },
     {
-      "question": "Is any README or usage documentation needed alongside the HTML file?",
-      "agents": ["documentation-writer"],
-      "source_files": [
-        "001-hello-world-html-page-20251027-191117-task001-documentation-writer.json"
-      ]
+      "question": "Should rate limiting or connection throttling be implemented to prevent DoS attacks?",
+      "agents": ["security-reviewer"],
+      "source_files": ["P-182-T-001.json", "P-147-T-001.json", "P-153-T-001.json", "P-146-T-001.json", "P-174-T-001.json", "P-151-T-001.json", "P-181-T-001.json", "P-178-T-001.json"]
     },
     {
-      "question": "Should the page include semantic HTML5 elements or minimal structure?",
-      "agents": ["web-developer"],
-      "source_files": [
-        "-feature-description-html5-indexhtml-for-a-hello-world-test-web-page-fe-369c171f-20251027-191016-task001-ux-designer.json"
-      ]
+      "question": "Are there specific HTTP response headers required (e.g., Content-Type, Server identification)?",
+      "agents": ["python-developer"],
+      "source_files": ["P-153-T-001.json"]
     },
     {
-      "question": "Should this page include any meta tags for SEO or social media sharing, or keep it minimal?",
-      "agents": ["project-manager"],
-      "source_files": [
-        "001-hello-world-html-page-20251027-191016-task001-project-manager.json"
-      ]
+      "question": "Are there specific JSON schema validation requirements beyond basic parsing?",
+      "agents": ["security-reviewer"],
+      "source_files": ["P-149-T-001.json"]
     },
     {
-      "question": "What WCAG level compliance is required (A, AA, or AAA)?",
-      "agents": ["ux-designer"],
-      "source_files": [
-        "001-hello-world-html-page-20251027-191117-task001-documentation-writer.json"
-      ]
+      "question": "Are there specific logging requirements for requests, errors, and health checks?",
+      "agents": ["devops-engineer"],
+      "source_files": ["P-154-T-001.json", "P-147-T-001.json"]
     },
     {
-      "question": "What browsers and viewport sizes should be tested for responsive design validation?",
+      "question": "Are there specific logging requirements for requests/errors or should it be silent?",
+      "agents": ["nodejs-developer"],
+      "source_files": ["P-152-T-001.json"]
+    },
+    {
+      "question": "Is graceful shutdown handling required for the server process?",
+      "agents": ["application-architect"],
+      "source_files": ["P-149-T-001.json"]
+    },
+    {
+      "question": "Is this server intended for production use or development/testing only?",
+      "agents": ["architect-reviewer", "application-architect"],
+      "source_files": ["P-179-T-001.json", "P-148-T-001.json"]
+    },
+    {
+      "question": "Should /echo validate JSON structure beyond parsing, or accept any valid JSON?",
+      "agents": ["nodejs-developer", "python-developer"],
+      "source_files": ["P-152-T-001.json", "P-180-T-001.json", "P-174-T-001.json", "P-182-T-001.json"]
+    },
+    {
+      "question": "Should both Python and Node.js implementations be delivered, or is one preferred?",
+      "agents": ["application-architect", "project-manager", "python-developer"],
+      "source_files": ["P-177-T-001.json", "P-148-T-001.json", "P-149-T-001.json", "P-176-T-001.json", "P-179-T-001.json", "P-181-T-001.json"]
+    },
+    {
+      "question": "Should integration tests include concurrent request handling and graceful shutdown/load testing scenarios?",
+      "agents": ["test-automation", "test-runner"],
+      "source_files": ["P-151-T-001.json", "P-179-T-001.json", "P-148-T-001.json", "P-149-T-001.json", "P-153-T-001.json", "P-177-T-001.json", "P-176-T-001.json", "P-147-T-001.json", "P-154-T-001.json", "P-150-T-001.json", "P-178-T-001.json", "P-174-T-001.json", "P-180-T-001.json"]
+    },
+    {
+      "question": "Should invalid JSON payloads return 400 Bad Request with error details or generic error message?",
+      "agents": ["python-developer"],
+      "source_files": ["P-151-T-001.json"]
+    },
+    {
+      "question": "Should the server handle graceful shutdown on SIGTERM/SIGINT signals?",
+      "agents": ["nodejs-developer", "python-developer", "application-architect"],
+      "source_files": ["P-180-T-001.json", "P-152-T-001.json", "P-182-T-001.json", "P-174-T-001.json", "P-154-T-001.json", "P-176-T-001.json", "P-146-T-001.json", "P-151-T-001.json", "P-153-T-001.json", "P-150-T-001.json", "P-147-T-001.json"]
+    },
+    {
+      "question": "Should the server log requests/errors to stdout/stderr, or remain completely silent?",
+      "agents": ["python-developer", "nodejs-developer", "devops-engineer"],
+      "source_files": ["P-178-T-001.json", "P-180-T-001.json", "P-175-T-001.json", "P-182-T-001.json"]
+    },
+    {
+      "question": "Should we add tests for malformed JSON, missing Content-Type header, and concurrent request handling?",
       "agents": ["test-runner"],
-      "source_files": [
-        "001-hello-world-html-page-20251027-191117-task001-nodejs-developer.json"
-      ]
+      "source_files": ["P-146-T-001.json", "P-175-T-001.json", "P-181-T-001.json"]
     },
     {
-      "question": "What is the target deployment environment?",
-      "agents": ["test-automation"],
-      "source_files": [
-        "html5-hello
+      "question": "Should we enforce HTTPS-only in production or is HTTP acceptable for this healthcheck service?",
+      "agents": ["security-reviewer"],
+      "source_files": ["P-152-T-001.json"]
+    },
+    {
+      "question": "Should we implement request timeout limits to prevent slowloris attacks?",
+      "agents": ["security-reviewer"],
+      "source_files": ["P-154-T-001.json", "P-180-T-001.json"]
+    },
+    {
+      "question": "What is the expected deployment environment and process management strategy (systemd, Docker, supervisor, PM2)?",
+      "agents": ["devops-engineer"],
+      "source_files": ["P-148-T-001.json", "P-149-T-001.json", "P-178-T-001.json", "P-153-T-001.json", "P-174-T-001.json", "P-181-T-001.json", "P-152-T-001.json", "P-176-T-001.json", "P-150-T-001.json", "P-177-T-001.json", "P-179-T-001.json"]
+    },
+    {
+      "question": "What is the expected graceful shutdown behavior when receiving SIGTERM/SIGINT?",
+      "agents": ["devops-engineer"],
+      "source_files": ["P-175-T-001.json"]
+    },
+    {
+      "question": "What logging level and format is required for production deployment (stdout/stderr, structured JSON logs)?",
+      "agents": ["devops-engineer"],
+      "source_files": ["P-151-T-001.json", "P-146-T-001.json"]
+    },
+    {
+      "question": "What should be the response format for /echo when Content-Type is missing or incorrect?",
+      "agents": ["python-developer"],
+      "source_files": ["P-154-T-001.json"]
+    }
+  ]
+}
+```

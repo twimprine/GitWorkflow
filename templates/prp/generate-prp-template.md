@@ -67,8 +67,68 @@ Based on feature domain:
 - Performance benchmarks defined and measurable
 - Documentation requirements complete and actionable
 
-## Output Requirements
-- Complete PRP with all sections validated by appropriate agents
-- Ready for `/execute-prp` implementation
-- All quality gates satisfied
-- Agent coordination plan included
+```json
+{
+   "task": "<...>",
+   
+
+
+
+   "agent_coordination_strategy": {
+      "core_agents": [
+         "business-analyst",
+         "architect-reviewer",
+         "security-reviewer"
+      ],
+      "technology_agent_selection": [
+         "python-developer",
+         "nodejs-developer",
+         "java-developer",
+         "golang-developer",
+         "rust-developer",
+         "react-developer",
+         "typescript-developer"
+      ],
+      "specialist_agent_selection": [
+         "database-administrator",
+         "api-designer",
+         "cloud-architect",
+         "devops-engineer",
+         "performance-profiler"
+      ],
+      "quality_agents": [
+         "test-automation",
+         "documentation-writer"
+      ]
+   },
+   "multi_agent_workflow": {
+      "phase_1_requirements_analysis": [
+         "business-analyst",
+         "architect-reviewer",
+         "security-reviewer"
+      ],
+      "phase_2_technical_specification": [
+         "technology_agents",
+         "specialist_agents",
+         "architect-reviewer"
+      ],
+      "phase_3_quality_framework": [
+         "test-automation",
+         "performance-profiler",
+         "security-reviewer"
+      ],
+      "phase_4_documentation_framework": [
+         "documentation-writer",
+         "api-designer",
+         "business-analyst"
+      ]
+   },
+   "quality_gates": [
+      "Business requirements validated and complete",
+      "Technical architecture reviewed and approved",
+      "Security requirements identified and addressable",
+      "Testing strategy comprehensive with 100% coverage targets",
+      "Performance benchmarks defined and measurable",
+      "Documentation requirements complete and actionable"
+   ]
+}
